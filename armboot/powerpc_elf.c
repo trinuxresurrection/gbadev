@@ -617,7 +617,7 @@ int powerpc_load_elf(const char* path)
 
 int powerpc_boot_file(const char *path)
 {
-	int fres = 0; 
+	int fres = 0, i; 
 	//FIL fd;
 	//u32 decryptionEndAddress, entry;
 	
@@ -666,6 +666,33 @@ int powerpc_boot_file(const char *path)
 	dc_flushrange((void*)0x1330100,32);
 	udelay(100000);
 	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
+
+	write32(0x2f00,0x0);
+	write32(0x2f40,0x0);
+	write32(0x2f80,0x0);
+	dc_flushrange((void*)0x2f00, 256);
+	do
+	{	dc_invalidaterange((void*)0x2f00,256);
+	}while( !(read32(0x2f40) && read32(0x2f80)) );
+	// since core 0 will put a 0 but should execute first by all means.
+
+	//dump memory area here
+	for(i=0; i<3; i++)
+	{	u32 address = 0x2f00 + (i<<6);
+		gecko_printf("\ncore %d (0x%08x)\n", i, address);
+		gecko_printf("-------------------\n");
+		gecko_printf("UPIR(1007):0x%08x\n", read32(address + 0));
+		gecko_printf("PVR (287) :0x%08x\n", read32(address + 4));
+		gecko_printf("HID2(920) :0x%08x\n", read32(address + 8));
+		gecko_printf("HID5(944) :0x%08x\n", read32(address + 12));
+		gecko_printf("SCR (947) :0x%08x\n", read32(address + 16));
+		gecko_printf("CAR (948) :0x%08x\n", read32(address + 20));
+		gecko_printf("BCR (949) :0x%08x\n", read32(address + 24));
+		gecko_printf("HID0(1008):0x%08x\n", read32(address + 28));
+		gecko_printf("HID1(1009):0x%08x\n", read32(address + 32));
+		gecko_printf("HID4(1011):0x%08x\n", read32(address + 36));
+		gecko_printf("L2CR(1017):0x%08x\n", read32(address + 40));
+	}
 	return fres;
 
 }

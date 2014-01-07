@@ -44,6 +44,43 @@ _start:
 	# At this point, upir contains the core ID (0, 1, 2) that is currently
 	# executing.
 	 
+mfspr r3,1007
+li r4,6
+slw r3,r3,r4
+addi r3,r3,0x2f00
+
+mfspr r4, 1007
+str r4,r3
+addi r3,r3,4
+mfspr r4, 287
+str r4,r3
+addi r3,r3,4
+mfspr r4, 920
+str r4,r3
+addi r3,r3,4
+mfspr r4, 944
+str r4,r3
+addi r3,r3,4
+mfspr r4, 947
+str r4,r3
+addi r3,r3,4
+mfspr r4, 948
+str r4,r3
+addi r3,r3,4
+mfspr r4, 949
+str r4,r3
+addi r3,r3,4
+mfspr r4, 1008
+str r4,r3
+addi r3,r3,4
+mfspr r4, 1009
+str r4,r3
+addi r3,r3,4
+mfspr r4, 1011
+str r4,r3
+addi r3,r3,4
+mfspr r4, 1017
+str r4,r3
     
   # Global init
 	mfspr r3,1007
