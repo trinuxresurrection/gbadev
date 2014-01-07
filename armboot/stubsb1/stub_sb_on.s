@@ -50,37 +50,37 @@ slw r3,r3,r4
 addi r3,r3,0x2f00
 
 mfspr r4, 1007
-stw r4,r3
+stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 287
-stw r4,r3
+stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 920
-stw r4,r3
+stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 944
-stw r4,r3
+stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 947
-stw r4,r3
+stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 948
-stw r4,r3
+stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 949
-stw r4,r3
+stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 1008
-stw r4,r3
+stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 1009
-stw r4,r3
+stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 1011
-stw r4,r3
+stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 1017
-stw r4,r3
+stw r4,0(r3)
     
   # Global init
 	mfspr r3,1007
