@@ -663,7 +663,7 @@ int powerpc_boot_file(const char *path)
 		if(read32(0x100))
 		{	fres++;
 			write32(0x100,0x0);
-			dc_flushrange((void*)0x100,32)
+			dc_flushrange((void*)0x100,32);
 		}
 		dc_invalidaterange((void*)0x1330100,32);
 		i++;//ahb_flush_from(AHB_1);
