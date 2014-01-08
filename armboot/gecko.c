@@ -27,7 +27,7 @@ Copyright (C) 2009		Andre Heider "dhewg" <dhewg@wiibrew.org>
 #include "ff.h"
 
 static u8 gecko_found = 0;
-static u8 gecko_enabled = 0;
+static u8 gecko_enabled = 2;
 static u8 gecko_console_enabled = 0;
 
 #define LOG_FILE "/trnx-log.txt"

@@ -617,11 +617,10 @@ int powerpc_load_elf(const char* path)
 
 int powerpc_boot_file(const char *path)
 {
-	int fres = 0, i; 
+	int fres=0, i=0;
 	//FIL fd;
-	//u32 decryptionEndAddress, entry;
 	
-	gecko_printf("powerpc_load_elf returned %d .\n", fres = powerpc_load_elf(path));
+//	gecko_printf("powerpc_load_elf returned %d .\n", fres = powerpc_load_elf(path));
 	//fres = powerpc_load_dol("/bootmii/00000003.app", &entry);
 	//decryptionEndAddress = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3; 
 	//gecko_printf("powerpc_load_dol returned %d .\n", fres);
@@ -637,6 +636,10 @@ int powerpc_boot_file(const char *path)
 	powerpc_upload_oldstub(0x1800);
  	write_stub(0x1800, (u32*)stubsb1, stubsb1_size/4);
 	powerpc_jump_stub(0x1800+stubsb1_size, elfhdr.e_entry);
+	write32(0x100, 0x0);
+	write32(0x2f00,0x1);
+	write32(0x2f40,0x0);
+	write32(0x2f80,0x0);
 	dc_flushall();
 	//this is where the end of our entry point loading stub will be
 	u32 oldValue = read32(0x1330108);
@@ -656,8 +659,14 @@ int powerpc_boot_file(const char *path)
 
 	// do race attack here
 	do
-	{	dc_invalidaterange((void*)0x1330100,32);
-		//ahb_flush_from(AHB_1);
+	{	dc_invalidaterange((void*)0x100,32);
+		if(read32(0x100))
+		{	fres++;
+			write32(0x100,0x0);
+			dc_flushrange((void*)0x100,32)
+		}
+		dc_invalidaterange((void*)0x1330100,32);
+		i++;//ahb_flush_from(AHB_1);
 	}while(oldValue == read32(0x1330108));
 
 	write32(0x1330100, 0x38802000); // li r4, 0x2000
@@ -667,15 +676,11 @@ int powerpc_boot_file(const char *path)
 	udelay(100000);
 	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
 
-	write32(0x2f00,0x0);
-	write32(0x2f40,0x0);
-	write32(0x2f80,0x0);
-	dc_flushrange((void*)0x2f00, 256);
-	do
-	{	dc_invalidaterange((void*)0x2f00,256);
-	}while( !(read32(0x2f40) && read32(0x2f80)) );
-	// since core 0 will put a 0 but should execute first by all means.
+	do dc_invalidaterange((void*)0x2f00,256);
+	while( read32(0x2f40) || !(read32(0x2f40) && read32(0x2f80)) );
 
+	gecko_printf("Race attack competed after %d reps.", i);
+	gecko_printf("0x100 is currently 0x%08x and was zeroed %d times.", read32(0x100), fres);
 	//dump memory area here
 	for(i=0; i<3; i++)
 	{	u32 address = 0x2f00 + (i<<6);
@@ -692,8 +697,9 @@ int powerpc_boot_file(const char *path)
 		gecko_printf("HID1(1009):0x%08x\n", read32(address + 32));
 		gecko_printf("HID4(1011):0x%08x\n", read32(address + 36));
 		gecko_printf("L2CR(1017):0x%08x\n", read32(address + 40));
+		gecko_printf("r3 value : 0x%08x\n", read32(address + 40));
 	}
-	return fres;
+	return 0;
 
 }
 

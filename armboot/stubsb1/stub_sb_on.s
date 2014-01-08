@@ -34,16 +34,16 @@ _start:
 #	b		.
 #	b		.
 
-
- 
+addi r5,r3,0
+	
 	mfspr r3,944
 	oris r3,r3,0xc000
 	mtspr 944,r3
 	#hid5(944) |= 0xc0000000;  # enable HID5 and PIR (upir?)
-	 
+	
 	# At this point, upir contains the core ID (0, 1, 2) that is currently
 	# executing.
-	 
+
 mfspr r3,1007
 li r4,6
 slw r3,r3,r4
@@ -81,6 +81,8 @@ stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 1017
 stw r4,0(r3)
+addi r3,r3,4
+stw r5,0(r3)
     
   # Global init
 	mfspr r3,1007
@@ -313,7 +315,7 @@ bne kickstartend
 kickstartend:
 	mfspr r3,1007
 	cmpwi r3,0
-   beq stubend
+#   beq stubend
 # do
 	flagloop:
    b flagloop
