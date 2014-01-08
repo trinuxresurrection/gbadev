@@ -699,6 +699,7 @@ int powerpc_boot_file(const char *path)
 		gecko_printf("L2CR(1017):0x%08x\n", read32(address + 40));
 		gecko_printf("r3 value : 0x%08x\n", read32(address + 40));
 	}
+	systemReset();
 	return 0;
 
 }
