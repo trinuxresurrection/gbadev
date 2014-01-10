@@ -48,6 +48,7 @@ mfspr r3,1007
 li r4,6
 slw r3,r3,r4
 addi r3,r3,0x2f00
+li r6,0
 
 mfspr r4, 1007
 stw r4,0(r3)
@@ -60,6 +61,9 @@ stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 944
 stw r4,0(r3)
+
+dcbf r3,r6
+
 addi r3,r3,4
 mfspr r4, 947
 stw r4,0(r3)
@@ -72,6 +76,9 @@ stw r4,0(r3)
 addi r3,r3,4
 mfspr r4, 1008
 stw r4,0(r3)
+
+dcbf r3,r6
+
 addi r3,r3,4
 mfspr r4, 1009
 stw r4,0(r3)
@@ -83,6 +90,9 @@ mfspr r4, 1017
 stw r4,0(r3)
 addi r3,r3,4
 stw r5,0(r3)
+
+dcbf r3,r6
+sync
     
   # Global init
 	mfspr r3,1007

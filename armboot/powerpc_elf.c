@@ -618,6 +618,8 @@ int powerpc_load_elf(const char* path)
 int powerpc_boot_file(const char *path)
 {
 	int fres=0, i=0;
+	bool todo[3] = {true,true,true};
+	u32 address;
 	//FIL fd;
 	
 //	gecko_printf("powerpc_load_elf returned %d .\n", fres = powerpc_load_elf(path));
@@ -676,29 +678,32 @@ int powerpc_boot_file(const char *path)
 	udelay(100000);
 	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
 
-	do dc_invalidaterange((void*)0x2f00,256);
-	while( read32(0x2f40) || !(read32(0x2f40) && read32(0x2f80)) );
+	gecko_printf("Race attack competed after %d reps.\n", i);
 
-	gecko_printf("Race attack competed after %d reps.", i);
-	gecko_printf("0x100 is currently 0x%08x and was zeroed %d times.", read32(0x100), fres);
-	//dump memory area here
-	for(i=0; i<3; i++)
-	{	u32 address = 0x2f00 + (i<<6);
-		gecko_printf("\ncore %d (0x%08x)\n", i, address);
-		gecko_printf("-------------------\n");
-		gecko_printf("UPIR(1007):0x%08x\n", read32(address + 0));
-		gecko_printf("PVR (287) :0x%08x\n", read32(address + 4));
-		gecko_printf("HID2(920) :0x%08x\n", read32(address + 8));
-		gecko_printf("HID5(944) :0x%08x\n", read32(address + 12));
-		gecko_printf("SCR (947) :0x%08x\n", read32(address + 16));
-		gecko_printf("CAR (948) :0x%08x\n", read32(address + 20));
-		gecko_printf("BCR (949) :0x%08x\n", read32(address + 24));
-		gecko_printf("HID0(1008):0x%08x\n", read32(address + 28));
-		gecko_printf("HID1(1009):0x%08x\n", read32(address + 32));
-		gecko_printf("HID4(1011):0x%08x\n", read32(address + 36));
-		gecko_printf("L2CR(1017):0x%08x\n", read32(address + 40));
-		gecko_printf("r3 value : 0x%08x\n", read32(address + 40));
-	}
+	do dc_invalidaterange((void*)0x2f00,256);
+	{	//dump memory area here
+		for(i=0; i<3; i++)
+			if( todo[i] && read( (address = 0x2f00 + (i<<6)) )==i )
+			{	gecko_printf("\ncore %d (0x%08x)\n", i, address);
+				gecko_printf("-------------------\n");
+				gecko_printf("UPIR(1007):0x%08x\n", read32(address + 0));
+				gecko_printf("PVR (287) :0x%08x\n", read32(address + 4));
+				gecko_printf("HID2(920) :0x%08x\n", read32(address + 8));
+				gecko_printf("HID5(944) :0x%08x\n", read32(address + 12));
+				gecko_printf("SCR (947) :0x%08x\n", read32(address + 16));
+				gecko_printf("CAR (948) :0x%08x\n", read32(address + 20));
+				gecko_printf("BCR (949) :0x%08x\n", read32(address + 24));
+				gecko_printf("HID0(1008):0x%08x\n", read32(address + 28));
+				gecko_printf("HID1(1009):0x%08x\n", read32(address + 32));
+				gecko_printf("HID4(1011):0x%08x\n", read32(address + 36));
+				gecko_printf("L2CR(1017):0x%08x\n", read32(address + 40));
+				gecko_printf("r3 value : 0x%08x\n", read32(address + 40));
+				todo[i] = false;
+			}
+	}while( todo[0] || todo[1] || todo[2] );
+
+	gecko_printf("\n0x100 is currently 0x%08x and was zeroed %d times.\n", read32(0x100), fres);
+	
 	systemReset();
 	return 0;
 
