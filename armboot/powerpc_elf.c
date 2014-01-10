@@ -680,8 +680,9 @@ int powerpc_boot_file(const char *path)
 
 	gecko_printf("Race attack competed after %d reps.\n", i);
 
-	do dc_invalidaterange((void*)0x2f00,256);
-	{	//dump memory area here
+	do
+	{	dc_invalidaterange((void*)0x2f00,256);
+		//dump memory area here
 		for(i=0; i<3; i++)
 			if( todo[i] && read( (address = 0x2f00 + (i<<6)) )==i )
 			{	gecko_printf("\ncore %d (0x%08x)\n", i, address);
