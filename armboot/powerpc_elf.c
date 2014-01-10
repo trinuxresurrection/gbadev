@@ -684,7 +684,7 @@ int powerpc_boot_file(const char *path)
 	{	dc_invalidaterange((void*)0x2f00,256);
 		//dump memory area here
 		for(i=0; i<3; i++)
-			if( todo[i] && read( (address = 0x2f00 + (i<<6)) )==i )
+			if( todo[i] && read32( (address = 0x2f00 + (i<<6)) )==i )
 			{	gecko_printf("\ncore %d (0x%08x)\n", i, address);
 				gecko_printf("-------------------\n");
 				gecko_printf("UPIR(1007):0x%08x\n", read32(address + 0));
