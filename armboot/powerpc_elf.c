@@ -684,7 +684,7 @@ int powerpc_boot_file(const char *path)
 	runTime = read32(HW_TIMER);
 	gecko_printf("Race attack competed after %d reps (%d timer ticks).\n", i, startTime-resetTime);
 	gecko_printf("Decryption competed another after %d reps (%d timer ticks).\n", fres, endTime-startTime);
-	geckp_printf("We got control after another %d timer ticks.", runTime-endTime);
+	gecko_printf("We got control after another %d timer ticks.", runTime-endTime);
 
 	do
 	{	dc_invalidaterange((void*)0x2f00,256);
