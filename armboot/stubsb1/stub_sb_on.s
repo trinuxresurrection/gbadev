@@ -104,20 +104,20 @@ sync
 	cmpwi r3,0
 	bne endif1
 	#if (/*upir(1007) == 0*/ r3)
-	 
-  	
-     
-  	mfspr r3,947
+
+
+
+		mfspr r3,947
 		lis r4,0x4000
 		not r4,r4
 		and r3,r3,r4
 		mtspr 947,r3
 		#scr(947) &= ~0x40000000; # scr, car, and bcr are global SPRs
 	 
-		mfspr r3,947
-		oris r3,r3,0x8000
-		mtspr 947,r3
-		#scr(947) |= 0x80000000;
+		#mfspr r3,947
+		#oris r3,r3,0x8000
+		#mtspr 947,r3
+		#scr(947) |= 0x80000000; # this is to block the bootROM (which should already have been done) but we might as well avoit it :P
 
 		mfspr r3,948
 		oris r3,r3,0xfc10
@@ -126,28 +126,27 @@ sync
    
 		#lis r3,0x0800
 #or
-      #mfspr r3,949
+		#mfspr r3,949
 		#oris r3,r3,0x0800
-      
 		#mtspr 949,r3
 		#bcr(949) |= 0x08000000;
-	 
+	
 	endif1:
-	 
+	
 
 
   # Per-core init
 	# these registers and bits already exist in Broadway
-	 
+	
 	lis r3,0x11
 	ori r3,r3,0x0024
 	mtspr 1008,r3
 	#hid0(1008) = 0x110024; # enable BHT, BTIC, NHR, DPM
-	 
+	
 	lis r3,0xf
 	mtspr 920,r3
 	#hid2(920) = 0xf0000; # enable cache and DMA errors
-	 
+	
 	lis r3,0xb3b0
 	mtspr 1011,r3
 	#hid4(1011) = 0xb3b00000; # 64B fetch, depth 4, SBE, ST0, LPE, L2MUM, L2CFI
@@ -156,116 +155,116 @@ sync
 	# new L2 and core interface units
 	mfspr r3,287
 	andi. r3,r3,0xFFFF
-  b endelse
-  #if(/*pvr(287) & 0xFFFF*/ r3 == 0x101)
-	 
+
+b endelse
+	#if(/*pvr(287) & 0xFFFF*/ r3 == 0x101)
+	
 		mfspr r3,944
 		oris r3,r3,0x6FBD
 		ori r3,r3,0x4300
 		mtspr 944,r3
 		#hid5(944) |= 0x6FBD4300;
-	 
+	
 	b endelse
 	endif2:
 	#else
-	 
+	
 		mfspr r3,944
 		oris r3,r3,0x6FFD
 		ori r3,r3,0xC000
 		mtspr 944,r3
 		#hid5(944) |= 0x6FFDC000;
-	 
+	
 	endelse:
-	 
+	
 	mfspr r3,920
 	oris r3,r3,0xe000
 	mtspr 920,r3
 	#hid2(920) |= 0xe0000000; # LSQE, WPE, PSE
-	 
+	
 	#mfmsr r3
 	li r3,0x2000
 	mtmsr r3
 	#msr = 0x2000; # enable floating point
-	 
-	              
+	
 # boring TB, decrementer, mmu init omitted
-	 
+
 # floating point reg init
-	 
+	
 	mfspr r3,1008
 	ori r3,r3,0xc00
 	mtspr 1008,r3
 	#hid0(1008) |= 0xc00; # flash invalidate ICache, DCache
-	 
+	
 	mfspr r3,1008
 	lis r4,0x10
 	not r4,r4
 	and r3,r3,r4
 	mtspr 1008,r3
 	#hid0(1008) &= ~0x100000; # disable DPM
-	 
+	
 	li r4,0
 	mtspr 1017,0
 	#l2cr(1017) = new_l2cr(?) = 0
-	 
+	
 	mfspr r3,287
 	andi. r3,r3,0xFFFF
 	cmpwi r3,0x100
 	bne endif3
 	#if (/*pvr(287) & 0xffff*/ r3 == 0x100)
-	 
+	
 		ori r4,r4,0x8
 		#new_l2cr(?) |= 0x8;
-	 
+	
 	endif3:
-	 
+	
 	mfspr r3,944
 	oris r3,r3,0x0100
 	mtspr 944,r3
 	#hid5(944) |= 0x01000000;
-	 
+	
 	mfspr r3,1007
 	cmpwi r3,1
 	bne endif4
 	#if (/*core*/ r3 == 1)
-	 
+	
 		oris r4,r4,0x2000
 		#new_l2cr(r4) |= 0x20000000; # probably has something to do with the
 								# extra L2 for core1
 	endif4:
-	 
+	
 	mtspr 1017,r4
 	#l2cr(1017) = new_l2cr(r4);
-	 
+	
 	oris r4, r4, 0x20
 	#new_l2cr(r4) |= 0x200000; # L2 global invalidate
-	 
+	
 	mtspr 1017,r4
 	#l2cr(1017) = new_l2cr(r4);
-	 
+	
 	loopstart:
 	mfspr r3,1017
 	andi. r3,r3,1
 	bne loopstart
 	#while (/*l2cr(1017) & 1*/ r3); # wait for global invalidate to finish
-	 
+	
 	mfspr r3,1017
 	lis r4,0x20
 	not r4,r4
 	and r3,r3,r4
 	mtspr 1017,r3
 	#l2cr(1017) &= ~0x200000; # clear L2 invalidate
-	 
+	
 	mfspr r3,1017
 	oris r3,r3,0x8000
 	mtspr 1017,r3
 	#l2cr(1017) |= 0x80000000; # L2 enable
-	 
+	
 	mfspr r3,1008
 	oris r3,r3,0x10
 	mtspr 1008,r3
 	#hid0(1008) |= 0x100000; # enable DPM
-	 
+	
 	mfspr r3,1008
 	ori r3,r3,0xc000
 	mtspr 1008,r3
@@ -307,57 +306,57 @@ sync
 	li      r29,0
 	li      r30,0
 	li      r31,0
-   
-  # Core is now initialized. Check core ID (upir) and jump to wherever
+
+# Core is now initialized. Check core ID (upir) and jump to wherever
 	mfspr r3,1007
 	cmpwi r3,0
- #  #if (/*core0*/ r3 == 0)
+#	#if (/*core0*/ r3 == 0)
 bne kickstartend
 		# To kickstart the other cores (from core 0):
-      
-		# core 1
+    
+	# core 1
 		mfspr r3,947
 		oris r3,r3,0x0020
 		mtspr 947,r3
 		#scr(947) |= 0x00200000;
-      
+    
   	# core 2
 		mfspr r3,947
 		oris r3,r3,0x0040
 		mtspr 947,r3
 		#scr(947) |= 0x00400000;
-      
+    
 kickstartend:
 	mfspr r3,1007
 	cmpwi r3,0
-#   beq stubend
+#	beq stubend
 # do
 	flagloop:
-   b flagloop
+	b flagloop
 # (wait for some flag set from core 1 when initialized)
 # (wait for some flag set from core 2 when initialized)
 # while
-	 
+	
 # jump to code start
-	 
+	
 	ifcore1 :
 
 # set a flag for the main core,
-	 
+	
 		# spin in a loop waiting for a vector, or whatever
-	  core1loop0:
+	core1loop0:
 		b core1loop1
-	  core1loop1:
+	core1loop1:
 		b core1loop0
-	 
+	
 	ifcore2 :
- 	 
+
 # set a flag for the main core,
-	 
+	
 		# spin in a loop waiting for a vector, or whatever
-	  core2loop0:
+	core2loop0:
 		b core2loop1
-	  core2loop1:
+	core2loop1:
 		b core2loop0
 	
 	stubend:
@@ -373,6 +372,6 @@ kickstartend:
 	#just pop back to the SECOND "b core1loop" / "b core2loop" instruction which would
 	#put the core back in the original loop.
 	
-	 
+	
 	# Note: the Cafe OS kernel actually then uses core 2 as the main core
 	# after starting all three. This is probably unimportant.

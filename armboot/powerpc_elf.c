@@ -647,7 +647,7 @@ int powerpc_boot_file(const char *path)
 	//this is where the end of our entry point loading stub will be
 	u32 oldValue = read32(0x1330108);
 
-    //set32(HW_GPIO1OWNER, HW_GPIO1_SENSE);
+    set32(HW_GPIO1OWNER, HW_GPIO1_SENSE);
 	set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
 	set32(HW_AHBPROT, 0xFFFFFFFF);
 	gecko_printf("Resetting PPC. End on-screen debug output.\n\n");
@@ -662,7 +662,8 @@ int powerpc_boot_file(const char *path)
 	resetTime = read32(HW_TIMER);
 	// do race attack here
 	do
-	{	dc_invalidaterange((void*)0x1330100,32);
+	{	ahb_flush_from(AHB_1);
+		dc_invalidaterange((void*)0x1330100,32);
 		i++;
 	}while(oldValue == read32(0x1330108));
 	startTime = read32(HW_TIMER);
@@ -673,15 +674,18 @@ int powerpc_boot_file(const char *path)
 	write32(0x1330108, 0x48001802); // b 0x1800
 	dc_flushrange((void*)0x1330100,32);
 	//udelay(100000);
-	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
 	do
-	{	dc_invalidaterange((void*)address,32);
+	{	ahb_flush_from(AHB_1);
+		dc_invalidaterange((void*)address,32);
 		fres++;
 	}while(oldValue == read32(address));
 	endTime = read32(HW_TIMER);
-	do dc_invalidaterange((void*)0x2fe0,32);
-	while(read32(0x2fe0));
+	do
+	{	ahb_flush_from(AHB_1);
+		dc_invalidaterange((void*)0x2fe0,32);
+	}while(read32(0x2fe0));
 	runTime = read32(HW_TIMER);
+	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
 	gecko_printf("Race attack competed after %d reps (%d timer ticks).\n", i, startTime-resetTime);
 	gecko_printf("Decryption competed another after %d reps (%d timer ticks).\n", fres, endTime-startTime);
 	gecko_printf("We got control after another %d timer ticks.", runTime-endTime);
