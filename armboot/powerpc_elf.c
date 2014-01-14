@@ -619,12 +619,13 @@ int powerpc_boot_file(const char *path)
 {
 	int fres=0, i=0;
 	bool todo[3] = {true,true,true};
-	u32 address;
+	u32 address = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3;
+	u32 resetTime, startTime, endTime, runTime;
 	//FIL fd;
 	
 //	gecko_printf("powerpc_load_elf returned %d .\n", fres = powerpc_load_elf(path));
 	//fres = powerpc_load_dol("/bootmii/00000003.app", &entry);
-	//decryptionEndAddress = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3; 
+	//decryptionEndAddress = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3;
 	//gecko_printf("powerpc_load_dol returned %d .\n", fres);
 	if(fres) return fres;
 	gecko_printf("0xd8005A0 register value is %08x.\n", read32(0xd8005A0));
@@ -638,10 +639,10 @@ int powerpc_boot_file(const char *path)
 	powerpc_upload_oldstub(0x1800);
  	write_stub(0x1800, (u32*)stubsb1, stubsb1_size/4);
 	powerpc_jump_stub(0x1800+stubsb1_size, elfhdr.e_entry);
-	write32(0x100, 0x0);
 	write32(0x2f00,0x1);
 	write32(0x2f40,0x0);
 	write32(0x2f80,0x0);
+	write32(0x2fe0,0x0);
 	dc_flushall();
 	//this is where the end of our entry point loading stub will be
 	u32 oldValue = read32(0x1330108);
@@ -658,27 +659,32 @@ int powerpc_boot_file(const char *path)
 	set32(HW_RESETS, 0x20);
 	udelay(100);
 	set32(HW_RESETS, 0x10);
-
+	resetTime = read32(HW_TIMER);
 	// do race attack here
 	do
-	{	dc_invalidaterange((void*)0x100,32);
-		if(read32(0x100))
-		{	fres++;
-			write32(0x100,0x0);
-			dc_flushrange((void*)0x100,32);
-		}
-		dc_invalidaterange((void*)0x1330100,32);
-		i++;//ahb_flush_from(AHB_1);
+	{	dc_invalidaterange((void*)0x1330100,32);
+		i++;
 	}while(oldValue == read32(0x1330108));
+	startTime = read32(HW_TIMER);
+	oldValue = read32(address);
 
 	write32(0x1330100, 0x38802000); // li r4, 0x2000
 	write32(0x1330104, 0x7c800124); // mtmsr r4
 	write32(0x1330108, 0x48001802); // b 0x1800
 	dc_flushrange((void*)0x1330100,32);
-	udelay(100000);
+	//udelay(100000);
 	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
-
-	gecko_printf("Race attack competed after %d reps.\n", i);
+	do
+	{	dc_invalidaterange((void*)address,32);
+		fres++;
+	}while(oldValue == read32(address));
+	endTime = read32(HW_TIMER);
+	do dc_invalidaterange((void*)0x2fe0,32);
+	while(read32(0x2fe0));
+	runTime = read32(HW_TIMER);
+	gecko_printf("Race attack competed after %d reps (%d timer ticks).\n", i, startTime-resetTime);
+	gecko_printf("Decryption competed another after %d reps (%d timer ticks).\n", fres, endTime-startTime);
+	geckp_printf("We got control after another %d timer ticks.", runTime-endTime);
 
 	do
 	{	dc_invalidaterange((void*)0x2f00,256);
@@ -698,13 +704,11 @@ int powerpc_boot_file(const char *path)
 				gecko_printf("HID1(1009):0x%08x\n", read32(address + 32));
 				gecko_printf("HID4(1011):0x%08x\n", read32(address + 36));
 				gecko_printf("L2CR(1017):0x%08x\n", read32(address + 40));
-				gecko_printf("r3 value : 0x%08x\n", read32(address + 40));
+				gecko_printf("MSR value :0x%08x\n", read32(address + 40));
 				todo[i] = false;
 			}
 	}while( todo[0] || todo[1] || todo[2] );
 
-	gecko_printf("\n0x100 is currently 0x%08x and was zeroed %d times.\n", read32(0x100), fres);
-	
 	systemReset();
 	return 0;
 
