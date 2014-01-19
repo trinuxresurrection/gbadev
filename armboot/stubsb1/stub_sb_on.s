@@ -27,6 +27,8 @@ li r4,0x2fe0
 stw r3,0(r4)
 dcbf 0,r4
 
+mfspr r6,944
+
 	lis		r3,0x0d80		#HW_REG_BASE physical address
 	ori 	r3,r3,0xc4		#HW_GPIO1BDIR
 	lwz 	r4,0(r3)
@@ -95,6 +97,13 @@ stw r4,0(r3)
 addi r3,r3,4
 mfmsr r4
 stw r4,0(r3)
+
+dcbf 0,r3
+
+addi r3,r3,4
+stw r5,0(r3)
+addi r3,r3,4
+stw r6,0(r3)
 
 dcbf 0,r3
 sync

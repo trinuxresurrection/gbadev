@@ -617,7 +617,7 @@ int powerpc_load_elf(const char* path)
 
 int powerpc_boot_file(const char *path)
 {
-	int fres, i;
+	int fres, i=0;
 	bool todo[3] = {true,true,true};
 	u32 address = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3;
 	u32 resetTime, startTime, endTime, runTime;
@@ -645,7 +645,7 @@ int powerpc_boot_file(const char *path)
 	write32(0x2fe0,0x0);
 	dc_flushall();
 	//this is where the end of our entry point loading stub will be
-	u32 oldValue = read32(0x1330108);
+	u32 oldValue = read32(0x1330100);
 
 	set32(HW_GPIO1OWNER, HW_GPIO1_SENSE);
 	set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
@@ -662,25 +662,28 @@ int powerpc_boot_file(const char *path)
 	resetTime = read32(HW_TIMER);
 	// do race attack here
 	do dc_invalidaterange((void*)0x1330100,32);
-	while(oldValue == read32(0x1330108));
+	while(oldValue == read32(0x1330100));
 	startTime = read32(HW_TIMER);
 	oldValue = read32(address);
 
-	write32(0x1330100, 0x38802000); // li r4, 0x2000
-	write32(0x1330104, 0x7c800124); // mtmsr r4
-	write32(0x1330108, 0x48001802); // b 0x1800
+	write32(0x1330100, 0x7ca000a6); // mfmsr r5
+	write32(0x1330104, 0x38802000); // li r4, 0x2000
+	write32(0x1330108, 0x7c800124); // mtmsr r4
+	write32(0x133010c, 0x48001802); // b 0x1800
 	dc_flushrange((void*)0x1330100,32);
-	do dc_invalidaterange((void*)address,32);
-	while(oldValue == read32(address));
-	endTime = read32(HW_TIMER);
 	do dc_invalidaterange((void*)0x2fe0,32);
 	while(read32(0x2fe0));
 	runTime = read32(HW_TIMER);
+	do
+	{	dc_invalidaterange((void*)address,32);
+		i++;
+	}while(oldValue == read32(address));
+	endTime = read32(HW_TIMER);
 	udelay(100000);
 	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
-	gecko_printf("Race attack competed after %d timer ticks.\n", startTime-resetTime);
-	gecko_printf("Decryption competed another after %d timer ticks.\n", endTime-startTime);
-	gecko_printf("We got control after another %d timer ticks.", runTime-endTime);
+	gecko_printf("Race attack completed after %d timer ticks.\n", startTime-resetTime);
+	gecko_printf("We got control after another %d timer ticks.", runTime-startTime);
+	gecko_printf("Decryption completion was seen after another %d reps (%d timer ticks).\n", endTime-runTime);
 
 	do
 	{	dc_invalidaterange((void*)0x2f00,256);
@@ -700,7 +703,9 @@ int powerpc_boot_file(const char *path)
 				gecko_printf("HID1(1009):0x%08x\n", read32(address + 32));
 				gecko_printf("HID4(1011):0x%08x\n", read32(address + 36));
 				gecko_printf("L2CR(1017):0x%08x\n", read32(address + 40));
-				gecko_printf("MSR value :0x%08x\n", read32(address + 40));
+				gecko_printf(" New MSR : 0x%08x\n", read32(address + 44));
+				gecko_printf(" Old MSR : 0x%08x\n", read32(address + 48));
+				gecko_printf("Old HID5 : 0x%08x\n", read32(address + 52));
 				todo[i] = false;
 			}
 	}while( todo[0] || todo[1] || todo[2] );
