@@ -660,6 +660,7 @@ int powerpc_boot_file(const char *path)
 	udelay(100);
 	set32(HW_RESETS, 0x10);
 	resetTime = read32(HW_TIMER);
+	
 	// do race attack here
 	do dc_invalidaterange((void*)0x1330100,32);
 	while(oldValue == read32(0x1330100));
@@ -671,19 +672,20 @@ int powerpc_boot_file(const char *path)
 	write32(0x1330108, 0x7c800124); // mtmsr r4
 	write32(0x133010c, 0x48001802); // b 0x1800
 	dc_flushrange((void*)0x1330100,32);
-	do dc_invalidaterange((void*)0x2fe0,32);
-	while(read32(0x2fe0));
-	runTime = read32(HW_TIMER);
-	do
-	{	dc_invalidaterange((void*)address,32);
-		i++;
-	}while(oldValue == read32(address));
+	
+	do dc_invalidaterange((void*)address,32);
+	while(oldValue == read32(address));
 	endTime = read32(HW_TIMER);
+	
+	do dc_invalidaterange((void*)0x2fe0,32);
+	while(!read32(0x2fe0));
+	runTime = read32(HW_TIMER);
+	
 	udelay(100000);
 	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
 	gecko_printf("Race attack completed after %d timer ticks.\n", startTime-resetTime);
-	gecko_printf("We got control after another %d timer ticks.", runTime-startTime);
-	gecko_printf("Decryption completion was seen after another %d reps (%d timer ticks).\n", endTime-runTime);
+	gecko_printf("Decryption completed after another %d timer ticks.\n", endTime-startTime);
+	gecko_printf("We got control after another %d timer ticks.\n", runTime-endTime);
 
 	do
 	{	dc_invalidaterange((void*)0x2f00,256);
