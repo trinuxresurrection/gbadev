@@ -632,7 +632,7 @@ int powerpc_boot_file(const char *path)
 		gecko_printf("PPC booted!\n");
 		return 0;
 	}gecko_printf("Running Wii U code.\n");
-	for(EXIdelay = 0; EXIdelay <= 200000; EXIdelay += 10)
+	for(EXIdelay = 0; EXIdelay <= 200000; EXIdelay += 100)
 	{	fres = powerpc_load_dol("/bootmii/00000003.app", &elfhdr.e_entry);
 		if(fres)
 		{	gecko_printf("powerpc_load_dol returned %d .\n", fres);
