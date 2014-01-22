@@ -57,6 +57,8 @@ armboot_config *redirectedGecko = (armboot_config*)0x81200000;
 // Alignment required for USB structures (I don't know if this is 32 or less).
 #define USB_ALIGN __attribute__ ((aligned(32)))
  
+#define BLOCKSIZE 2048
+
 char bluetoothResetData1[] USB_ALIGN = {0x20}; // bmRequestType
 char bluetoothResetData2[] USB_ALIGN = {0x00}; // bmRequest
 char bluetoothResetData3[] USB_ALIGN = {0x00, 0x00}; // wValue
@@ -121,6 +123,85 @@ void CheckArguments(int argc, char **argv) {
 		DEBUG("Setting ppcboot location to %s.\n", newPath);
 		free(pathToSet);
 	}
+}
+
+s32 dumpfile()
+{	char *source = "/title/00000001/00000200/content/00000003.app";
+	char *destination = "sd:/bootmii/00000003.app";
+	u8 *buffer;
+	fstats *status;
+
+	FILE *file;
+	int fd;
+	s32 ret;
+	u32 size;
+
+	fd = ISFS_Open(source, ISFS_OPEN_READ);
+	if (fd < 0)
+	{
+		DEBUG("\nError: ISFS_OpenFile(%s) returned %d\n", source, fd);
+		return fd;
+	}
+	
+	file = fopen(destination, "wb");
+	if (!file)
+	{
+		DEBUG("\nError: fopen(%s) returned 0\n", destination);
+		ISFS_Close(fd);
+		return -1;
+	}
+
+	status = memalign(32, sizeof(fstats) );
+	ret = ISFS_GetFileStats(fd, status);
+	if (ret < 0)
+	{
+		DEBUG("\nISFS_GetFileStats(fd) returned %d\n", ret);
+		ISFS_Close(fd);
+		fclose(file);
+		free(status);
+		return ret;
+	}
+	Con_ClearLine();
+	DEBUG("Dumping file %s, size = %uKB ...", source, (status->file_length / 1024)+1);
+
+	buffer = (u8 *)memalign(32, BLOCKSIZE);
+	u32 restsize = status->file_length;
+	while (restsize > 0)
+	{
+		if (restsize >= BLOCKSIZE)
+		{
+				size = BLOCKSIZE;
+		} else
+		{
+				size = restsize;
+		}
+		ret = ISFS_Read(fd, buffer, size);
+		if (ret < 0)
+		{
+				DEBUG("\nISFS_Read(%d, %p, %d) returned %d\n", fd, buffer, size, ret);
+				ISFS_Close(fd);
+				fclose(file);
+				free(status);
+				free(buffer);
+				return ret;
+		}
+		ret = fwrite(buffer, 1, size, file);
+		if(ret < 0) 
+		{
+				DEBUG("\nfwrite error%d\n", ret);
+				ISFS_Close(fd);
+				fclose(file);
+				free(status);
+				free(buffer);
+				return ret;
+		}
+		restsize -= size;
+	}
+	ISFS_Close(fd);
+	fclose(file);
+	free(status);
+	free(buffer);
+	return 0;
 }
 
 typedef struct dol_t dol_t;
@@ -271,14 +352,15 @@ int main(int argc, char **argv) {
 	rmode = VIDEO_GetPreferredMode(NULL);
 	initialize(rmode);
 	u32 i /*, binSize = 168512*/ ;
-	char *NAND_path = "/title/00000001/00000200/content/00000003.app";
+	//char *NAND_path = "/title/00000001/00000200/content/00000003.app";
 	CheckArguments(argc, argv);
 	if(__debug){
 		printf("Applying patches to IOS with AHBPROT\n");
 		printf("IosPatch_RUNTIME(...) returned %i\n", IosPatch_RUNTIME(true, false, false, true));
 		printf("ISFS_Initialize() returned %d\n", ISFS_Initialize());
 		//printf("loadTMDfromNAND() returned %d for system menu.\n", loadTMDfromNAND("/title/00000001/00000002/content/title.tmd", NAND_path+33, binSize));
-		printf("loadDOLfromNAND() returned %d .\n", loadDOLfromNAND(NAND_path));
+		//printf("loadDOLfromNAND() returned %d .\n", loadDOLfromNAND(NAND_path));
+		dumpfile();
 /*		NAND_path = "/title/00000001/00000050/content/0000000d.app";
 		//printf("loadTMDfromNAND() returned %d for IOS80.\n", loadTMDfromNAND("/title/00000001/00000050/content/title.tmd", NAND_path+33, binSize));
 		printf("loadBINfromNAND() returned %d .\n", loadBINfromNAND(NAND_path, binSize));
@@ -291,7 +373,7 @@ int main(int argc, char **argv) {
 		IosPatch_RUNTIME(true, false, false, false);
 		ISFS_Initialize();
 		//loadTMDfromNAND("/title/00000001/00000002/content/title.tmd", NAND_path+33, binSize);
-		if(loadDOLfromNAND(NAND_path))
+		if(dumpfile() /*loadDOLfromNAND(NAND_path)*/)
 		{	
 			CHANGE_COLOR(RED);
 			printf("Load 1-512 from NAND failed.\n");
