@@ -161,7 +161,6 @@ s32 dumpfile()
 		free(status);
 		return ret;
 	}
-	Con_ClearLine();
 	DEBUG("Dumping file %s, size = %uKB ...", source, (status->file_length / 1024)+1);
 
 	buffer = (u8 *)memalign(32, BLOCKSIZE);
