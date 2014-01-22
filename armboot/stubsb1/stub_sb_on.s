@@ -146,7 +146,7 @@ sync
 	mfspr r3,1007
 	cmpwi r3,0
 #	#if (/*core0*/ r3 == 0)
-bne kickstartend
+bne kickstartend2
 		# To kickstart the other cores (from core 0):
     
 	# core 1 and 2
@@ -155,8 +155,8 @@ bne kickstartend
 		mtspr 947,r3
 		#scr(947) |= 0x00600000;
     
-kickstartend:
-b kickstartend
+kickstartend2:
+b kickstartend2
 
 # /////////////////////// end test code //////////////////////////////
 
