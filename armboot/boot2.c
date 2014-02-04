@@ -289,6 +289,7 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo) {
  	if((read32(0xd8005A0) & 0xFFFF0000) == 0xCAFE0000)
 	{	FIL fd;
 		FRESULT fres;
+		u32 read;
 		fres = f_open(&fd, "/bootmii/0000000d.app", FA_READ);
 		if (fres != FR_OK)
 			systemReset();
