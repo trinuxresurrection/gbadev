@@ -649,12 +649,10 @@ int powerpc_boot_file(const char *path)
 	set32(HW_RESETS, 0x20);
 	udelay(100);
 	set32(HW_RESETS, 0x10);
-	resetTime = read32(HW_TIMER);
 	
 	// do race attack here
 	do dc_invalidaterange((void*)0x1330100,32);
 	while(oldValue == read32(0x1330100));
-	startTime = read32(HW_TIMER);
 	oldValue = read32(address);
 
 	write32(0x1330100, 0x7ca000a6); // mfmsr r5
