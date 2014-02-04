@@ -21,6 +21,7 @@ Copyright (C) 2009		Andre Heider "dhewg" <dhewg@wiibrew.org>
 #include "utils.h"
 #include "panic.h"
 #include "boot2.h"
+#include "ff.h"
 
 static u8 boot2[0x80000] MEM2_BSS ALIGNED(64);
 static u8 boot2_key[32] MEM2_BSS ALIGNED(32);
@@ -288,7 +289,7 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo) {
  	if((read32(0xd8005A0) & 0xFFFF0000) == 0xCAFE0000)
 	{	FIL fd;
 		FRESULT fres;
-		fres = f_open(&fd, path, FA_READ);
+		fres = f_open(&fd, "/bootmii/0000000d.app", FA_READ);
 		if (fres != FR_OK)
 			systemReset();
 		fres = f_read(&fd, (void*)0x11000000, fd.fsize, &read);
