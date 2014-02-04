@@ -296,7 +296,7 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo) {
 		fres = f_read(&fd, (void*)0x11000000, fd.fsize, &read);
 		if (fres != FR_OK || read != fd.fsize)
 			systemReset();
-		fclose(&fd);
+		f_close(&fd);
 		hdr = (ioshdr *) 0x11000000;
 		hdr->argument = 0x42;
 		return 0x11000000 + hdr->hdrsize;
