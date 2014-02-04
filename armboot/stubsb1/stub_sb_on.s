@@ -22,17 +22,14 @@
 	.globl _start  
 _start:
 
-#start ack
-li r4,0x2fe0
-stw r3,0(r4)
-dcbf 0,r4
-
 mfspr r6,944
 
 	lis		r3,0x0d80		#HW_REG_BASE physical address
 	ori 	r3,r3,0xc4		#HW_GPIO1BDIR
 	lwz 	r4,0(r3)
-	ori		r4,r4,0x100		#HW_GPIO1_SENSE
+	li		r2,0x100
+	not		r2,r2
+	and		r4,r4,r2		#HW_GPIO1_SENSE
 	stw		r4,0(r3)
 	dcbf	0,r3
 	lis		r3,0x0d80		#HW_REG_BASE physical address
@@ -108,6 +105,23 @@ stw r6,0(r3)
 dcbf 0,r3
 sync
     
+	mfspr r3,1007
+	cmpwi r3,0
+#	#if (/*core0*/ r3 == 0)
+bne kickstartend2
+		# To kickstart the other cores (from core 0):
+    
+	# core 1 and 2
+		mfspr r3,947
+		oris r3,r3,0x0060
+		mtspr 947,r3
+		#scr(947) |= 0x00600000;
+    
+kickstartend2:
+b kickstartend2
+
+# /////////////////////// end test code //////////////////////////////
+
   # Global init
 	mfspr r3,1007
 	cmpwi r3,0
@@ -143,22 +157,6 @@ sync
 	endif1:
 	
 
-	mfspr r3,1007
-	cmpwi r3,0
-#	#if (/*core0*/ r3 == 0)
-bne kickstartend2
-		# To kickstart the other cores (from core 0):
-    
-	# core 1 and 2
-		mfspr r3,947
-		oris r3,r3,0x0060
-		mtspr 947,r3
-		#scr(947) |= 0x00600000;
-    
-kickstartend2:
-b kickstartend2
-
-# /////////////////////// end test code //////////////////////////////
 
   # Per-core init
 	# these registers and bits already exist in Broadway

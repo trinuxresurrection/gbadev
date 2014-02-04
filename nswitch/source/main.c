@@ -56,7 +56,7 @@ armboot_config *redirectedGecko = (armboot_config*)0x81200000;
 
 // Alignment required for USB structures (I don't know if this is 32 or less).
 #define USB_ALIGN __attribute__ ((aligned(32)))
- 
+
 #define BLOCKSIZE 2048
 
 char bluetoothResetData1[] USB_ALIGN = {0x20}; // bmRequestType
@@ -66,7 +66,7 @@ char bluetoothResetData4[] USB_ALIGN = {0x00, 0x00}; // wIndex
 char bluetoothResetData5[] USB_ALIGN = {0x03, 0x00}; // wLength
 char bluetoothResetData6[] USB_ALIGN = {0x00}; // unknown; set to zero.
 char bluetoothResetData7[] USB_ALIGN = {0x03, 0x0c, 0x00}; // Mesage payload.
- 
+
 /** Vectors of data transfered. */
 ioctlv bluetoothReset[] USB_ALIGN = {
 	{	bluetoothResetData1,
@@ -85,7 +85,7 @@ ioctlv bluetoothReset[] USB_ALIGN = {
 		sizeof(bluetoothResetData7)
 	}
 };
- 
+
 void BTShutdown()
 {	s32 fd;
 	int rv;
@@ -125,17 +125,40 @@ void CheckArguments(int argc, char **argv) {
 	}
 }
 
-s32 dumpfile()
-{	char *source = "/title/00000001/00000200/content/00000003.app";
-	char *destination = "sd:/bootmii/00000003.app";
-	u8 *buffer;
+s32 mountSD()
+{
+	s32 ret = __io_wiisd.startup();
+	if (!ret)
+	{	DEBUG("SD Error\n");
+		return ret;
+	}
+	
+	ret = fatMount("sd",&__io_wiisd,0,4,512);
+	if (!ret)
+	{	DEBUG("FAT Error\n");
+		return ret;
+	}
+	
+	ret = (u32)opendir("sd:/bootmii");
+	if(ret == 0)
+	{	ret = mkdir("sd:/bootmii", 0777);
+		if (ret < 0)
+		{	DEBUG("Error creating folder\n");
+			return ret;
+		}
+	}
+	return ret;
+}
+
+s32 dumpfile(char *source, char *destination)
+{	u8 *buffer;
 	fstats *status;
 
 	FILE *file;
 	int fd;
 	s32 ret;
 	u32 size;
-
+	
 	fd = ISFS_Open(source, ISFS_OPEN_READ);
 	if (fd < 0)
 	{
@@ -351,19 +374,22 @@ int main(int argc, char **argv) {
 	rmode = VIDEO_GetPreferredMode(NULL);
 	initialize(rmode);
 	u32 i /*, binSize = 168512*/ ;
-	//char *NAND_path = "/title/00000001/00000200/content/00000003.app";
+	char *NAND_path = "/title/00000001/00000200/content/00000003.app";
 	CheckArguments(argc, argv);
 	if(__debug){
 		printf("Applying patches to IOS with AHBPROT\n");
 		printf("IosPatch_RUNTIME(...) returned %i\n", IosPatch_RUNTIME(true, false, false, true));
 		printf("ISFS_Initialize() returned %d\n", ISFS_Initialize());
-		//printf("loadTMDfromNAND() returned %d for system menu.\n", loadTMDfromNAND("/title/00000001/00000002/content/title.tmd", NAND_path+33, binSize));
-		//printf("loadDOLfromNAND() returned %d .\n", loadDOLfromNAND(NAND_path));
-		dumpfile();
-/*		NAND_path = "/title/00000001/00000050/content/0000000d.app";
-		//printf("loadTMDfromNAND() returned %d for IOS80.\n", loadTMDfromNAND("/title/00000001/00000050/content/title.tmd", NAND_path+33, binSize));
-		printf("loadBINfromNAND() returned %d .\n", loadBINfromNAND(NAND_path, binSize));
-*/		printf("Setting magic word.\n");
+		if((i=mountSD()) || dumpfile(NAND_path, "sd:/bootmii/00000003.app"))
+		{	printf("Dumping of 00000003.app file to SD failed. Attempting to write to memory.\n");
+			printf("loadDOLfromNAND() returned %d .\n", loadDOLfromNAND(NAND_path));
+		}
+		NAND_path = "/title/00000001/00000050/content/0000000d.app";
+		if(!i)
+		{	printf("dumpfile() returned %d for IOS80.\n", dumpfile(NAND_path, "sd:/bootmii/0000000d.app"));
+			__io_wiisd.shutdown();
+		}
+		printf("Setting magic word.\n");
 		redirectedGecko->str[0] = '\0';
 		redirectedGecko->str[1] = '\0';
 		redirectedGecko->debug_magic = 0xDEB6;
@@ -371,26 +397,26 @@ int main(int argc, char **argv) {
 	}else{
 		IosPatch_RUNTIME(true, false, false, false);
 		ISFS_Initialize();
-		//loadTMDfromNAND("/title/00000001/00000002/content/title.tmd", NAND_path+33, binSize);
-		if(dumpfile() /*loadDOLfromNAND(NAND_path)*/)
-		{	
-			CHANGE_COLOR(RED);
-			printf("Load 1-512 from NAND failed.\n");
+		if((i=mountSD()) || dumpfile(NAND_path, "sd:/bootmii/00000003.app"))
+		{	CHANGE_COLOR(RED);
+			printf("Dump 1-512 to SD from NAND failed.\n");
+			if(loadDOLfromNAND(NAND_path))
+			{	CHANGE_COLOR(RED);
+				printf("Load 1-512 from NAND failed.\n");
+			} else {
+				CHANGE_COLOR(GREEN);
+				printf("1-512 loaded from NAND.\n");
+			}
 		} else {
 			CHANGE_COLOR(GREEN);
-			printf("1-512 loaded from NAND.\n");
+			printf("1-512 dumped to SD from NAND.\n");
 		}
-/*		NAND_path = "/title/00000001/00000050/content/0000000d.app";
-		//loadTMDfromNAND("/title/00000001/00000050/content/title.tmd", NAND_path+33, binSize);
-		if(loadBINfromNAND(NAND_path, binSize))
-		{	
-			CHANGE_COLOR(RED);
-			printf("Load IOS80 from NAND failed.\n");
-		} else {
-			CHANGE_COLOR(GREEN);
-			printf("IOS80 loaded from NAND.\n");
+		NAND_path = "/title/00000001/00000050/content/0000000d.app";
+		if(!i)
+		{	dumpfile(NAND_path, "sd:/bootmii/0000000d.app");
+			__io_wiisd.shutdown();
 		}
-*/		CHANGE_COLOR(WHITE); // Restore default
+		CHANGE_COLOR(WHITE); // Restore default
 	}
 	if(__useIOS){
 	

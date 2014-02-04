@@ -436,15 +436,6 @@ void powerpc_jump_stub(u32 location, u32 entry)
 	write32(location + 4 * 4, 0x7c7b03a6);
 	// rfi
 	write32(location + 4 * 5, 0x4c000064);
-
-//	for (i = 6; i < 0x10; ++i)
-//		write32(EXI_BOOT_BASE + 4 * i, 0);
-
-//	set32(HW_DIFLAGS, DIFLAGS_BOOT_CODE);
-//	set32(HW_AHBPROT, 0xFFFFFFFF);
-
-//	gecko_printf("disabling EXI now...\n");
-//	clear32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
 }
 
 const u32 memory_watcher_size = 6;
@@ -619,7 +610,7 @@ int powerpc_boot_file(const char *path)
 {
 	int fres=0, i=0;
 	bool todo[3] = {true,true,true};
-	u32 resetTime, startTime, endTime, runTime, address, EXIdelay=0;
+	u32 address;
 	//FIL fd;
 	
 //	gecko_printf("powerpc_load_elf returned %d .\n", fres = powerpc_load_elf(path));
@@ -632,96 +623,77 @@ int powerpc_boot_file(const char *path)
 		gecko_printf("PPC booted!\n");
 		return 0;
 	}gecko_printf("Running Wii U code.\n");
-	for(EXIdelay = 0; EXIdelay <= 200000; EXIdelay += 100)
-	{	fres = powerpc_load_dol("/bootmii/00000003.app", &elfhdr.e_entry);
-		if(fres)
-		{	gecko_printf("powerpc_load_dol returned %d .\n", fres);
-			return fres;
-		}
-		address = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3;
-		powerpc_upload_oldstub(0x1800);
-		write_stub(0x1800, (u32*)stubsb1, stubsb1_size/4);
-		powerpc_jump_stub(0x1800+stubsb1_size, elfhdr.e_entry);
-		write32(0x2f00,0x1);
-		write32(0x2f40,0x0);
-		write32(0x2f80,0x0);
-		write32(0x2fe0,0x0);
-		dc_flushall();
-		//this is where the end of our entry point loading stub will be
-		u32 oldValue = read32(0x1330100);
+	fres = powerpc_load_dol("/bootmii/00000003.app", &elfhdr.e_entry);
+	if(fres)
+		gecko_printf("powerpc_load_dol returned %d .\nLet's hope it's already/still uncorrupted in RAM.\n", fres);
+	address = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3;
+	powerpc_upload_oldstub(0x1800);
+	write_stub(0x1800, (u32*)stubsb1, stubsb1_size/4);
+	powerpc_jump_stub(0x1800+stubsb1_size, elfhdr.e_entry);
+	write32(0x2f00,0x1);
+	write32(0x2f40,0x0);
+	write32(0x2f80,0x0);
+	dc_flushall();
+	//this is where the end of our entry point loading stub will be
+	u32 oldValue = read32(0x1330100);
 
-		set32(HW_GPIO1OWNER, HW_GPIO1_SENSE);
-		set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
-		set32(HW_AHBPROT, 0xFFFFFFFF);
-	//	gecko_printf("Resetting PPC. End on-screen debug output.\n\n");
-		gecko_enable(0);
+	set32(HW_GPIO1OWNER, HW_GPIO1_SENSE);
+	//set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
+	//set32(HW_AHBPROT, 0xFFFFFFFF);
+	gecko_printf("Resetting PPC. End on-screen debug output.\nSee SD log for more details.\n");
+	gecko_enable(0);
 
-		//reboot ppc side
-		clear32(HW_RESETS, 0x30);
-		udelay(100);
-		set32(HW_RESETS, 0x20);
-		udelay(100);
-		set32(HW_RESETS, 0x10);
-		resetTime = read32(HW_TIMER);
-		
-		// do race attack here
-		do dc_invalidaterange((void*)0x1330100,32);
-		while(oldValue == read32(0x1330100));
-		startTime = read32(HW_TIMER);
-		oldValue = read32(address);
+	//reboot ppc side
+	clear32(HW_RESETS, 0x30);
+	udelay(100);
+	set32(HW_RESETS, 0x20);
+	udelay(100);
+	set32(HW_RESETS, 0x10);
+	resetTime = read32(HW_TIMER);
+	
+	// do race attack here
+	do dc_invalidaterange((void*)0x1330100,32);
+	while(oldValue == read32(0x1330100));
+	startTime = read32(HW_TIMER);
+	oldValue = read32(address);
 
-		write32(0x1330100, 0x7ca000a6); // mfmsr r5
-		write32(0x1330104, 0x38802000); // li r4, 0x2000
-		write32(0x1330108, 0x7c800124); // mtmsr r4
-		write32(0x133010c, 0x48001802); // b 0x1800
-		dc_flushrange((void*)0x1330100,32);
-		
-		do dc_invalidaterange((void*)address,32);
-		while(oldValue == read32(address));
-		endTime = read32(HW_TIMER);
-		
-		do dc_invalidaterange((void*)0x2fe0,32);
-		while(!read32(0x2fe0));
-		runTime = read32(HW_TIMER);
-		
-		udelay(EXIdelay);
-		set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
-		udelay(100000);
-		
-//		gecko_printf("Race attack completed after %d timer ticks.\n", startTime-resetTime);
-//		gecko_printf("Decryption completed after another %d timer ticks.\n", endTime-startTime);
-//		gecko_printf("We got control after another %d timer ticks.\n", runTime-endTime);
-
-//		while( todo[0] || todo[1] || todo[2] )
-		{	dc_invalidaterange((void*)0x2f00,256);
-			gecko_printf("%d:%d%d%d(timing:%d %d %d)\n", EXIdelay, read32(0x2f00), read32(0x2f40), read32(0x2f80), startTime-resetTime, endTime-startTime, runTime-endTime);
-			//dump memory area here
-			for(i=0; i<3; i++)
-				if( todo[i] && read32( (address = 0x2f00 + (i<<6)) )==i )
-				{	gecko_printf("\ncore %d (0x%08x)\n", i, address);
-					gecko_printf("-------------------\n");
-					gecko_printf("UPIR(1007):0x%08x\n", read32(address + 0));
-					gecko_printf("PVR (287) :0x%08x\n", read32(address + 4));
-					gecko_printf("HID2(920) :0x%08x\n", read32(address + 8));
-					gecko_printf("HID5(944) :0x%08x\n", read32(address + 12));
-					gecko_printf("SCR (947) :0x%08x\n", read32(address + 16));
-					gecko_printf("CAR (948) :0x%08x\n", read32(address + 20));
-					gecko_printf("BCR (949) :0x%08x\n", read32(address + 24));
-					gecko_printf("HID0(1008):0x%08x\n", read32(address + 28));
-					gecko_printf("HID1(1009):0x%08x\n", read32(address + 32));
-					gecko_printf("HID4(1011):0x%08x\n", read32(address + 36));
-					gecko_printf("L2CR(1017):0x%08x\n", read32(address + 40));
-					gecko_printf(" New MSR : 0x%08x\n", read32(address + 44));
-					gecko_printf(" Old MSR : 0x%08x\n", read32(address + 48));
-					gecko_printf("Old HID5 : 0x%08x\n", read32(address + 52));
-					todo[i] = false;
-				}
-		}
+	write32(0x1330100, 0x7ca000a6); // mfmsr r5
+	write32(0x1330104, 0x38802000); // li r4, 0x2000
+	write32(0x1330108, 0x7c800124); // mtmsr r4
+	write32(0x133010c, 0x48001802); // b 0x1800
+	dc_flushrange((void*)0x1330100,32);
+	
+/*	do dc_invalidaterange((void*)address,32);
+	while(oldValue == read32(address));
+*/	
+	do dc_invalidaterange((void*)0x2fe0,32);
+	while(read32(0x2f00) && !read32(0x2f40) && !read32(0x2f80));
+	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
+	
+	dc_invalidaterange((void*)0x2f00,256);
+	//dump memory area here
+	for(i=0; i<3; i++)
+	{	gecko_printf("\ncore %d (0x%08x)\n", i, address);
+		gecko_printf("-------------------\n");
+		gecko_printf("UPIR(1007):0x%08x\n", read32(address + 0));
+		gecko_printf("PVR (287) :0x%08x\n", read32(address + 4));
+		gecko_printf("HID2(920) :0x%08x\n", read32(address + 8));
+		gecko_printf("HID5(944) :0x%08x\n", read32(address + 12));
+		gecko_printf("SCR (947) :0x%08x\n", read32(address + 16));
+		gecko_printf("CAR (948) :0x%08x\n", read32(address + 20));
+		gecko_printf("BCR (949) :0x%08x\n", read32(address + 24));
+		gecko_printf("HID0(1008):0x%08x\n", read32(address + 28));
+		gecko_printf("HID1(1009):0x%08x\n", read32(address + 32));
+		gecko_printf("HID4(1011):0x%08x\n", read32(address + 36));
+		gecko_printf("L2CR(1017):0x%08x\n", read32(address + 40));
+		gecko_printf(" New MSR : 0x%08x\n", read32(address + 44));
+		gecko_printf(" Old MSR : 0x%08x\n", read32(address + 48));
+		gecko_printf("Old HID5 : 0x%08x\n", read32(address + 52));
+		todo[i] = false;
 	}
 
-	systemReset();
-	return 0;
-
+	//systemReset();
+	return -1;
 }
 
 

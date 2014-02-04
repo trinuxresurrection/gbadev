@@ -283,11 +283,24 @@ static u32 boot2_patch(ioshdr *hdr) {
 }
 
 u32 boot2_run(u32 tid_hi, u32 tid_lo) {
- 	if((read32(0xd8005A0) & 0xFFFF0000) == 0xCAFE0000)
-		systemReset();
-
-	u32 num_matches;
 	ioshdr *hdr;
+
+ 	if((read32(0xd8005A0) & 0xFFFF0000) == 0xCAFE0000)
+	{	FIL fd;
+		FRESULT fres;
+		fres = f_open(&fd, path, FA_READ);
+		if (fres != FR_OK)
+			systemReset();
+		fres = f_read(&fd, (void*)0x11000000, fd.fsize, &read);
+		if (fres != FR_OK || read != fd.fsize)
+			systemReset();
+		fclose(&fd);
+		hdr = (ioshdr *) 0x11000000;
+		hdr->argument = 0x42;
+		return 0x11000000 + hdr->hdrsize;
+	}
+	
+	u32 num_matches;
 	
 	gecko_printf("booting boot2 with title %08x-%08x\n", tid_hi, tid_lo);
 	mem_protect(1, (void *)0x11000000, (void *)0x13FFFFFF);

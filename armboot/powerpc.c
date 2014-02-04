@@ -41,7 +41,7 @@ void powerpc_upload_oldstub(u32 entry)
 	// rfi
 	write32(EXI_BOOT_BASE + 4 * 6, 0x4c000064);
 
-	for (i = 6; i < 0x10; ++i)
+	for (i = 7; i < 0x10; ++i)
 		write32(EXI_BOOT_BASE + 4 * i, 0);
 
 	set32(HW_DIFLAGS, DIFLAGS_BOOT_CODE);
