@@ -678,7 +678,8 @@ int powerpc_boot_file(const char *path)
 	gecko_printf("\r\n");
 	//dump memory area here
 	for(i=0; i<3; i++)
-	{	gecko_printf("\r\ncore %d (0x%08x)\r\n", i, address);
+	{	address = 0x2f00+(i*0x40);
+		gecko_printf("\r\ncore %d (0x%08x)\r\n", i, address);
 		gecko_printf("-------------------\r\n");
 		gecko_printf("UPIR(1007):0x%08x\r\n", read32(address + 0));
 		gecko_printf("PVR (287) :0x%08x\r\n", read32(address + 4));
@@ -696,8 +697,8 @@ int powerpc_boot_file(const char *path)
 		gecko_printf("Old HID5 : 0x%08x\r\n", read32(address + 52));
 	}
 
-	//systemReset();
-	return -1;
+	systemReset();
+	return 0;
 }
 
 

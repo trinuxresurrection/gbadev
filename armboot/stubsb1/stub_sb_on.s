@@ -24,7 +24,7 @@ _start:
 
 mfspr r6,944
 
-	lis		r3,0x0d80		#HW_REG_BASE physical address
+	lis		r3,0x0d00		#HW_REG_BASE physical address
 	ori 	r3,r3,0xc4		#HW_GPIO1BDIR
 	lwz 	r4,0(r3)
 	li		r2,0x100
@@ -32,7 +32,7 @@ mfspr r6,944
 	and		r4,r4,r2		#HW_GPIO1_SENSE
 	stw		r4,0(r3)
 	dcbf	0,r3
-	lis		r3,0x0d80		#HW_REG_BASE physical address
+	lis		r3,0x0d00		#HW_REG_BASE physical address
 	ori 	r3,r3,0xc0		#HW_GPIO1BOUT
 	lwz 	r4,0(r3)
 	ori		r4,r4,0x100		#HW_GPIO1_SENSE
