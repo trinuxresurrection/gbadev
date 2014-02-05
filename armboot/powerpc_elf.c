@@ -664,11 +664,18 @@ int powerpc_boot_file(const char *path)
 /*	do dc_invalidaterange((void*)address,32);
 	while(oldValue == read32(address));
 */	
-	do dc_invalidaterange((void*)0x2f00,256);
-	while(read32(0x2f00) && !read32(0x2f40) && !read32(0x2f80));
+	do
+	{	dc_invalidaterange((void*)0x2f00,256);
+		for(i=0; i<3; i++)
+			if(todo[i] && read32(0x2f00+(i*0x40))==i)
+			{	todo[i] = false;
+				gecko_printf("%d", i);
+			}
+	}while(todo[0] || todo[1] || todo[2]);
 	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
 	
-	dc_invalidaterange((void*)0x2f00,256);
+	
+	gecko_printf("\r\n");
 	//dump memory area here
 	for(i=0; i<3; i++)
 	{	gecko_printf("\r\ncore %d (0x%08x)\r\n", i, address);
@@ -687,7 +694,6 @@ int powerpc_boot_file(const char *path)
 		gecko_printf(" New MSR : 0x%08x\r\n", read32(address + 44));
 		gecko_printf(" Old MSR : 0x%08x\r\n", read32(address + 48));
 		gecko_printf("Old HID5 : 0x%08x\r\n", read32(address + 52));
-		todo[i] = false;
 	}
 
 	//systemReset();
