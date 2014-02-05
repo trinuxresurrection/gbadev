@@ -470,7 +470,7 @@ int powerpc_load_dol(const char *path, u32 *entry)
 	FIL fd;
 	FRESULT fres;
 	dol_t dol_hdr;
-	gecko_printf("Loading DOL file: %s .\n", path);
+	gecko_printf("Loading DOL file: %s .\r\n", path);
 	fres = f_open(&fd, path, FA_READ);
 	if (fres != FR_OK)
 		return -fres;
@@ -496,8 +496,8 @@ int powerpc_load_dol(const char *path, u32 *entry)
 			return -fres;
 		if (phys + dol_hdr.sizeText[ii] > end)
 			end = phys + dol_hdr.sizeText[ii];
-//		gecko_printf("Text section of size %08x loaded from offset %08x to memory %08x.\n", dol_hdr.sizeText[ii], dol_hdr.offsetText[ii], phys);
-//		gecko_printf("Memory area starts with %08x and ends with %08x (at address %08x)\n", read32(phys), read32((phys+(dol_hdr.sizeText[ii] - 1)) & ~3),(phys+(dol_hdr.sizeText[ii] - 1)) & ~3);
+		gecko_printf("Text section of size %08x loaded from offset %08x to memory %08x.\r\n", dol_hdr.sizeText[ii], dol_hdr.offsetText[ii], phys);
+		gecko_printf("Memory area starts with %08x and ends with %08x (at address %08x)\r\n", read32(phys), read32((phys+(dol_hdr.sizeText[ii] - 1)) & ~3),(phys+(dol_hdr.sizeText[ii] - 1)) & ~3);
 	}
 
 	/* DATA SECTIONS */
@@ -514,8 +514,8 @@ int powerpc_load_dol(const char *path, u32 *entry)
 			return -fres;
 		if (phys + dol_hdr.sizeData[ii] > end)
 			end = phys + dol_hdr.sizeData[ii];
-//		gecko_printf("Data section of size %08x loaded from offset %08x to memory %08x.\n", dol_hdr.sizeData[ii], dol_hdr.offsetData[ii], phys);
-//		gecko_printf("Memory area starts with %08x and ends with %08x (at address %08x)\n", read32(phys), read32((phys+(dol_hdr.sizeData[ii] - 1)) & ~3),(phys+(dol_hdr.sizeData[ii] - 1)) & ~3);
+		gecko_printf("Data section of size %08x loaded from offset %08x to memory %08x.\r\n", dol_hdr.sizeData[ii], dol_hdr.offsetData[ii], phys);
+		gecko_printf("Memory area starts with %08x and ends with %08x (at address %08x)\r\n", read32(phys), read32((phys+(dol_hdr.sizeData[ii] - 1)) & ~3),(phys+(dol_hdr.sizeData[ii] - 1)) & ~3);
 	}f_close(&fd);
 	*entry = dol_hdr.entrypt;
 	return 0;
@@ -540,22 +540,22 @@ int powerpc_load_elf(const char* path)
 		return -100;
 
 	if (memcmp("\x7F" "ELF\x01\x02\x01\x00\x00",elfhdr.e_ident,9)) {
-		gecko_printf("Invalid ELF header! 0x%02x 0x%02x 0x%02x 0x%02x\n",elfhdr.e_ident[0], elfhdr.e_ident[1], elfhdr.e_ident[2], elfhdr.e_ident[3]);
+		gecko_printf("Invalid ELF header! 0x%02x 0x%02x 0x%02x 0x%02x\r\n",elfhdr.e_ident[0], elfhdr.e_ident[1], elfhdr.e_ident[2], elfhdr.e_ident[3]);
 		return -101;
 	}
 
 	if (_check_physaddr(elfhdr.e_entry) < 0) {
-		gecko_printf("Invalid entry point! 0x%08x\n", elfhdr.e_entry);
+		gecko_printf("Invalid entry point! 0x%08x\r\n", elfhdr.e_entry);
 		return -102;
 	}
 
 	if (elfhdr.e_phoff == 0 || elfhdr.e_phnum == 0) {
-		gecko_printf("ELF has no program headers!\n");
+		gecko_printf("ELF has no program headers!\r\n");
 		return -103;
 	}
 
 	if (elfhdr.e_phnum > PHDR_MAX) {
-		gecko_printf("ELF has too many (%d) program headers!\n", elfhdr.e_phnum);
+		gecko_printf("ELF has too many (%d) program headers!\r\n", elfhdr.e_phnum);
 		return -104;
 	}
 
@@ -575,17 +575,17 @@ int powerpc_load_elf(const char* path)
 	//powerpc_hang();
 	while (count--) {
 		if (phdr->p_type != PT_LOAD) {
-			gecko_printf("Skipping PHDR of type %d\n", phdr->p_type);
+			gecko_printf("Skipping PHDR of type %d\r\n", phdr->p_type);
 		} else {
 			if (_check_physrange(phdr->p_paddr, phdr->p_memsz) < 0) {
-				gecko_printf("PHDR out of bounds [0x%08x...0x%08x]\n",
+				gecko_printf("PHDR out of bounds [0x%08x...0x%08x]\r\n",
 								phdr->p_paddr, phdr->p_paddr + phdr->p_memsz);
 				return -106;
 			}
 
 			void *dst = (void *) phdr->p_paddr;
 
-			gecko_printf("LOAD 0x%x @0x%08x [0x%x]\n", phdr->p_offset, phdr->p_paddr, phdr->p_filesz);
+			gecko_printf("LOAD 0x%x @0x%08x [0x%x]\r\n", phdr->p_offset, phdr->p_paddr, phdr->p_filesz);
 			fres = f_lseek(&fd, phdr->p_offset);
 			if (fres != FR_OK)
 				return -fres;
@@ -600,7 +600,7 @@ int powerpc_load_elf(const char* path)
 	f_close(&fd);
 	dc_flushall();
 
-	gecko_printf("ELF load done. Entry point: %08x\n", elfhdr.e_entry);
+	gecko_printf("ELF load done. Entry point: %08x\r\n", elfhdr.e_entry);
 	//*entry = elfhdr.e_entry;
 	return 0;
 }
@@ -613,19 +613,19 @@ int powerpc_boot_file(const char *path)
 	u32 address;
 	//FIL fd;
 	
-//	gecko_printf("powerpc_load_elf returned %d .\n", fres = powerpc_load_elf(path));
-	gecko_printf("0xd8005A0 register value is %08x.\n", read32(0xd8005A0));
+//	gecko_printf("powerpc_load_elf returned %d .\r\n", fres = powerpc_load_elf(path));
+	gecko_printf("0xd8005A0 register value is %08x.\r\n", read32(0xd8005A0));
 	if((read32(0xd8005A0) & 0xFFFF0000) != 0xCAFE0000)
-	{	gecko_printf("This test is meant for a Wii U. Restarting.\n");
+	{	gecko_printf("This test is meant for a Wii U. Restarting.\r\n");
 		systemReset();
 		powerpc_upload_oldstub(elfhdr.e_entry);
 		powerpc_reset();
-		gecko_printf("PPC booted!\n");
+		gecko_printf("PPC booted!\r\n");
 		return 0;
-	}gecko_printf("Running Wii U code.\n");
+	}gecko_printf("Running Wii U code.\r\n");
 	fres = powerpc_load_dol("/bootmii/00000003.app", &elfhdr.e_entry);
 	if(fres)
-		gecko_printf("powerpc_load_dol returned %d .\nLet's hope it's already/still uncorrupted in RAM.\n", fres);
+		gecko_printf("powerpc_load_dol returned %d .\r\nLet's hope it's already/still uncorrupted in RAM.\r\n", fres);
 	address = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3;
 	powerpc_upload_oldstub(0x1800);
 	write_stub(0x1800, (u32*)stubsb1, stubsb1_size/4);
@@ -640,7 +640,7 @@ int powerpc_boot_file(const char *path)
 	set32(HW_GPIO1OWNER, HW_GPIO1_SENSE);
 	//set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
 	//set32(HW_AHBPROT, 0xFFFFFFFF);
-	gecko_printf("Resetting PPC. End on-screen debug output.\nSee SD log for more details.\n");
+	gecko_printf("Resetting PPC. End on-screen debug output.\r\nSee SD log for more details.\r\n");
 	gecko_enable(0);
 
 	//reboot ppc side
@@ -664,29 +664,29 @@ int powerpc_boot_file(const char *path)
 /*	do dc_invalidaterange((void*)address,32);
 	while(oldValue == read32(address));
 */	
-	do dc_invalidaterange((void*)0x2fe0,32);
+	do dc_invalidaterange((void*)0x2f00,256);
 	while(read32(0x2f00) && !read32(0x2f40) && !read32(0x2f80));
 	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
 	
 	dc_invalidaterange((void*)0x2f00,256);
 	//dump memory area here
 	for(i=0; i<3; i++)
-	{	gecko_printf("\ncore %d (0x%08x)\n", i, address);
-		gecko_printf("-------------------\n");
-		gecko_printf("UPIR(1007):0x%08x\n", read32(address + 0));
-		gecko_printf("PVR (287) :0x%08x\n", read32(address + 4));
-		gecko_printf("HID2(920) :0x%08x\n", read32(address + 8));
-		gecko_printf("HID5(944) :0x%08x\n", read32(address + 12));
-		gecko_printf("SCR (947) :0x%08x\n", read32(address + 16));
-		gecko_printf("CAR (948) :0x%08x\n", read32(address + 20));
-		gecko_printf("BCR (949) :0x%08x\n", read32(address + 24));
-		gecko_printf("HID0(1008):0x%08x\n", read32(address + 28));
-		gecko_printf("HID1(1009):0x%08x\n", read32(address + 32));
-		gecko_printf("HID4(1011):0x%08x\n", read32(address + 36));
-		gecko_printf("L2CR(1017):0x%08x\n", read32(address + 40));
-		gecko_printf(" New MSR : 0x%08x\n", read32(address + 44));
-		gecko_printf(" Old MSR : 0x%08x\n", read32(address + 48));
-		gecko_printf("Old HID5 : 0x%08x\n", read32(address + 52));
+	{	gecko_printf("\r\ncore %d (0x%08x)\r\n", i, address);
+		gecko_printf("-------------------\r\n");
+		gecko_printf("UPIR(1007):0x%08x\r\n", read32(address + 0));
+		gecko_printf("PVR (287) :0x%08x\r\n", read32(address + 4));
+		gecko_printf("HID2(920) :0x%08x\r\n", read32(address + 8));
+		gecko_printf("HID5(944) :0x%08x\r\n", read32(address + 12));
+		gecko_printf("SCR (947) :0x%08x\r\n", read32(address + 16));
+		gecko_printf("CAR (948) :0x%08x\r\n", read32(address + 20));
+		gecko_printf("BCR (949) :0x%08x\r\n", read32(address + 24));
+		gecko_printf("HID0(1008):0x%08x\r\n", read32(address + 28));
+		gecko_printf("HID1(1009):0x%08x\r\n", read32(address + 32));
+		gecko_printf("HID4(1011):0x%08x\r\n", read32(address + 36));
+		gecko_printf("L2CR(1017):0x%08x\r\n", read32(address + 40));
+		gecko_printf(" New MSR : 0x%08x\r\n", read32(address + 44));
+		gecko_printf(" Old MSR : 0x%08x\r\n", read32(address + 48));
+		gecko_printf("Old HID5 : 0x%08x\r\n", read32(address + 52));
 		todo[i] = false;
 	}
 
@@ -703,24 +703,24 @@ int powerpc_boot_mem(const u8 *addr, u32 len)
 	Elf32_Ehdr *ehdr = (Elf32_Ehdr *) addr;
 
 	if (memcmp("\x7F" "ELF\x01\x02\x01\x00\x00", ehdr->e_ident, 9)) {
-		gecko_printf("Invalid ELF header! 0x%02x 0x%02x 0x%02x 0x%02x\n",
+		gecko_printf("Invalid ELF header! 0x%02x 0x%02x 0x%02x 0x%02x\r\n",
 					ehdr->e_ident[0], ehdr->e_ident[1],
 					ehdr->e_ident[2], ehdr->e_ident[3]);
 		return -101;
 	}
 
 	if (_check_physaddr(ehdr->e_entry) < 0) {
-		gecko_printf("Invalid entry point! 0x%08x\n", ehdr->e_entry);
+		gecko_printf("Invalid entry point! 0x%08x\r\n", ehdr->e_entry);
 		return -102;
 	}
 
 	if (ehdr->e_phoff == 0 || ehdr->e_phnum == 0) {
-		gecko_printf("ELF has no program headers!\n");
+		gecko_printf("ELF has no program headers!\r\n");
 		return -103;
 	}
 
 	if (ehdr->e_phnum > PHDR_MAX) {
-		gecko_printf("ELF has too many (%d) program headers!\n",
+		gecko_printf("ELF has too many (%d) program headers!\r\n",
 					ehdr->e_phnum);
 		return -104;
 	}
@@ -738,15 +738,15 @@ int powerpc_boot_mem(const u8 *addr, u32 len)
 
 	while (count--) {
 		if (phdr->p_type != PT_LOAD) {
-			gecko_printf("Skipping PHDR of type %d\n", phdr->p_type);
+			gecko_printf("Skipping PHDR of type %d\r\n", phdr->p_type);
 		} else {
 			if (_check_physrange(phdr->p_paddr, phdr->p_memsz) < 0) {
-				gecko_printf("PHDR out of bounds [0x%08x...0x%08x]\n",
+				gecko_printf("PHDR out of bounds [0x%08x...0x%08x]\r\n",
 								phdr->p_paddr, phdr->p_paddr + phdr->p_memsz);
 				return -106;
 			}
 
-			gecko_printf("LOAD 0x%x @0x%08x [0x%x]\n", phdr->p_offset, phdr->p_paddr, phdr->p_filesz);
+			gecko_printf("LOAD 0x%x @0x%08x [0x%x]\r\n", phdr->p_offset, phdr->p_paddr, phdr->p_filesz);
 			memcpy((void *) phdr->p_paddr, &addr[phdr->p_offset],
 				phdr->p_filesz);
 		}
@@ -755,10 +755,10 @@ int powerpc_boot_mem(const u8 *addr, u32 len)
 
 	dc_flushall();
 
-	gecko_printf("ELF load done, booting PPC...\n");
+	gecko_printf("ELF load done, booting PPC...\r\n");
 	//powerpc_upload_oldstub(ehdr->e_entry);
 	powerpc_reset();
-	gecko_printf("PPC booted!\n");
+	gecko_printf("PPC booted!\r\n");
 
 	return 0;
 }
