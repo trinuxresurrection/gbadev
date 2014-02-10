@@ -27,6 +27,7 @@
 #include <malloc.h>
 #include <sdcard/wiisd_io.h>
 #include <fat.h>
+#include <dirent.h>
 
 #include "runtimeiospatch.h"
 #include "armboot.h"
