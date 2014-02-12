@@ -104,8 +104,8 @@ void BTShutdown()
 	IOS_Close(fd);
 }
 
-void CheckArguments(int argc, char **argv) {
-	int i;
+void CheckArguments(int argc, char **argv)
+{	int i;
 	char*pathToSet = 0;
 	char*newPath = redirectedGecko->buf;
 	if(argv[0][0] == 's' || argv[0][0] == 'S') // Make sure you're using an SD card
@@ -129,8 +129,7 @@ void CheckArguments(int argc, char **argv) {
 }
 
 s32 mountSD()
-{
-	s32 ret = __io_wiisd.startup();
+{	s32 ret = __io_wiisd.startup();
 	if (!ret)
 	{	DEBUG("SD Error\n");
 		return ret;
@@ -156,7 +155,6 @@ s32 mountSD()
 s32 dumpfile(char *source, char *destination)
 {	u8 *buffer;
 	fstats *status;
-
 	FILE *file;
 	int fd;
 	s32 ret;
@@ -164,24 +162,19 @@ s32 dumpfile(char *source, char *destination)
 	
 	fd = ISFS_Open(source, ISFS_OPEN_READ);
 	if (fd < 0)
-	{
-		DEBUG("\nError: ISFS_OpenFile(%s) returned %d\n", source, fd);
+	{	DEBUG("\nError: ISFS_OpenFile(%s) returned %d\n", source, fd);
 		return fd;
 	}
-	
 	file = fopen(destination, "wb");
 	if (!file)
-	{
-		DEBUG("\nError: fopen(%s) returned 0\n", destination);
+	{	DEBUG("\nError: fopen(%s) returned 0\n", destination);
 		ISFS_Close(fd);
 		return -1;
 	}
-
 	status = memalign(32, sizeof(fstats) );
 	ret = ISFS_GetFileStats(fd, status);
 	if (ret < 0)
-	{
-		DEBUG("\nISFS_GetFileStats(fd) returned %d\n", ret);
+	{	DEBUG("\nISFS_GetFileStats(fd) returned %d\n", ret);
 		ISFS_Close(fd);
 		fclose(file);
 		free(status);
@@ -192,33 +185,27 @@ s32 dumpfile(char *source, char *destination)
 	buffer = (u8 *)memalign(32, BLOCKSIZE);
 	u32 restsize = status->file_length;
 	while (restsize > 0)
-	{
-		if (restsize >= BLOCKSIZE)
-		{
-				size = BLOCKSIZE;
-		} else
-		{
-				size = restsize;
-		}
+	{	if (restsize >= BLOCKSIZE)
+			size = BLOCKSIZE;
+		else
+			size = restsize;
 		ret = ISFS_Read(fd, buffer, size);
 		if (ret < 0)
-		{
-				DEBUG("\nISFS_Read(%d, %p, %d) returned %d\n", fd, buffer, size, ret);
-				ISFS_Close(fd);
-				fclose(file);
-				free(status);
-				free(buffer);
-				return ret;
+		{	DEBUG("\nISFS_Read(%d, %p, %d) returned %d\n", fd, buffer, size, ret);
+			ISFS_Close(fd);
+			fclose(file);
+			free(status);
+			free(buffer);
+			return ret;
 		}
 		ret = fwrite(buffer, 1, size, file);
 		if(ret < 0) 
-		{
-				DEBUG("\nfwrite error%d\n", ret);
-				ISFS_Close(fd);
-				fclose(file);
-				free(status);
-				free(buffer);
-				return ret;
+		{	DEBUG("\nfwrite error%d\n", ret);
+			ISFS_Close(fd);
+			fclose(file);
+			free(status);
+			free(buffer);
+			return ret;
 		}
 		restsize -= size;
 	}
@@ -335,19 +322,31 @@ int loadTMDfromNAND(const char *path, char *cont_ID, u32 *cont_size)
 	return 0;
 }
 
-int loadBINfromNAND(const char *path, u32 size)
-{
-	int fd ATTRIBUTE_ALIGN(32);
-	s32 fres;
+int loadBINfromNAND(const char *path, void*destination)
+{	fstats status ATTRIBUTE_ALIGN(32);
+	s32 ret;
+	int fd = ISFS_Open(path, ISFS_OPEN_READ);
 	
-	DEBUG("Loading BIN file: %s .\n", path);
-	fd = ISFS_Open(path, ISFS_OPEN_READ);
 	if (fd < 0)
+	{	DEBUG("\nError: ISFS_OpenFile(%s) returned %d\n", path, fd);
 		return fd;
-	fres = ISFS_Read(fd, (void*)0x90200000, size);
-	DCFlushRange((void*)0x90200000, size);
-	if (fres < 0)
-		return fres;
+	}
+	
+	ret = ISFS_GetFileStats(fd, &status);
+	if (ret < 0)
+	{	DEBUG("\nISFS_GetFileStats(fd) returned %d\n", ret);
+		ISFS_Close(fd);
+		return ret;
+	}
+	DEBUG("Loading %s file to 0x%08x, size = %uKB ...", path, (status.file_length / 1024)+1);
+
+	ret = ISFS_Read(fd, destination, status.file_length);
+	if (ret < 0)
+	{	ISFS_Close(fd);
+		return ret;
+	}
+	DCFlushRange(destination, status.file_length);
+
 	ISFS_Close(fd);
 	return 0;
 }
@@ -376,7 +375,7 @@ int main(int argc, char **argv) {
 	VIDEO_Init();
 	rmode = VIDEO_GetPreferredMode(NULL);
 	initialize(rmode);
-	u32 i /*, binSize = 168512*/ ;
+	u32 i;
 	char *NAND_path = "/title/00000001/00000200/content/00000003.app";
 	CheckArguments(argc, argv);
 	if(__debug){
