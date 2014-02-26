@@ -29,7 +29,7 @@ Copyright (C) 2009		John Kelley <wiidev@kelley.ca>
 #include "nand.h"
 #include "boot2.h"
 
-#define PPC_BOOT_FILE "/bootmii/ppcboot.elf"
+#define BOOTROM_DUMP_FILE "/bootrom.bin"
 
 FATFS fatfs;
 
@@ -100,8 +100,8 @@ u32 _main(void *base)
 		res = powerpc_boot_file((char*)0x01200008);
 	}
 	else
-	{	gecko_printf("Trying to boot:" PPC_BOOT_FILE "\n");
-		res = powerpc_boot_file(PPC_BOOT_FILE);
+	{	gecko_printf("Trying to boot:" BOOTROM_DUMP_FILE "\n");
+		res = powerpc_boot_file(BOOTROM_DUMP_FILE);
 	}
 	if(res < 0) {
 		gecko_printf("Failed to boot PPC: %d\n", res);

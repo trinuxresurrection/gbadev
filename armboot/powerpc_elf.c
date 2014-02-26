@@ -111,12 +111,6 @@ void powerpc_jump_stub(u32 location, u32 entry)
 	write32(location + 4 * 5, 0x4c000064);
 }
 
-void write_stub(u32 address, const u32 stub[], u32 size)
-{	u32 i;
-	for(i = 0; i < size; i++)
-		write32(address + 4 * i, stub[i]);
-}
-
 int powerpc_load_dol(const char *path, u32 *entry)
 {
 	u32 read;
@@ -262,6 +256,43 @@ int powerpc_load_elf(const char* path)
 #define CACHE_LOC	/*0x136f0e0*/ 0x1330100
 #define WAIT_TIME	9422
 
+const u32 dumper_stub[] =
+{
+/*0x4000*/ 0x7c79faa6, // mfl2cr r3
+/*0x4004*/ 0x3c807fff, // lis r4, 0x7FFF
+/*0x4008*/ 0x6084ffff, // ori r4, r4, 0xFFFF
+/*0x400c*/ 0x7c632038, // and r3, r3, r4
+/*0x4010*/ 0x7c79fba6, // mtl2cr r3
+/*0x4014*/ 0x7c0004ac, // sync
+/*0x4018*/ 0x7c70faa6, // mfdbsr r3
+/*0x401c*/ 0x3c80ffff, // lis r4, 0xFFFF
+/*0x4020*/ 0x60843fff, // ori r4, r4, 0x3FFF
+/*0x4024*/ 0x7c632038, // and r3, r3, r4
+/*0x4028*/ 0x7c70fba6, // mtdbsr r3
+/*0x402c*/ 0x7c0004ac, // sync
+/*0x4030*/ 0x3c600133, // lis r3, 0x0133
+/*0x4034*/ 0x3c800000, // lis r4, 0
+/*0x4038*/ 0x3ca00000, // lis r5, 0
+/*0x403c*/ 0x3cc00000, // lis r6, 0
+
+/*0x4040*/ 0x2c064000, // cmpwi r6, 0x4000
+/*0x4044*/ 0x4080001c, // bge- 0x4060
+/*0x4048*/ 0x80a40000, // lwz r5, 0(r4)
+/*0x404c*/ 0x90a30000, // stw r5, 0(r3)
+/*0x4050*/ 0x38630004, // addi r3, r3, 4
+/*0x4054*/ 0x38840004, // addi r4, r4, 4
+/*0x4058*/ 0x38c60004, // addi r6, r6, 4
+/*0x405c*/ 0x4bffffe4, // b 0x4040
+/*0x4060*/ 0x48000000  // b 0x4060
+};
+const u32 dumper_stub_size = sizeof(dumper_stub) / 4;
+const u32 dumper_stub_location = 0x4000;
+
+void write_stub(u32 address, const u32 stub[], u32 size)
+{	u32 i;
+	for(i = 0; i < size; i++)
+		write32(address + 4 * i, stub[i]);
+}
 
 int powerpc_boot_file(const char *path)
 {
@@ -294,52 +325,7 @@ int powerpc_boot_file(const char *path)
 	// Write code to the reset vector
 	write32(0x100, 0x48003f00); // b 0x4000
 
-	// Write code to 0x4000
-/*	write32(0x4000, 0x7c79faa6); // mfl2cr r3
-	write32(0x4004, 0x3c807fff); // lis r4, 0x7FFF
-	write32(0x4008, 0x6084ffff); // ori r4, r4, 0xFFFF
-	write32(0x400c, 0x7c632038); // and r3, r3, r4
-	write32(0x4010, 0x7c79fba6); // mtl2cr r3
-	write32(0x4014, 0x7c0004ac); // sync
-	write32(0x4018, 0x7c70faa6); // mfdbsr r3
-	write32(0x401c, 0x3c80ffff); // lis r4, oxFFFF
-	write32(0x4020, 0x60843fff); // ori r4, r4, 0x3FFF
-	write32(0x4024, 0x7c632038); // and r3, r3, r4
-	write32(0x4028, 0x7c70fba6); // mtdbsr r3
-	write32(0x402c, 0x7c0004ac); // sync
-	write32(0x4030, 0x3c600133); // lis r3, 0x0133
-	write32(0x4034, 0x7c93eaa6); // mfspr r4, 947 #scr
-	write32(0x4038, 0x90830100); // stw r4, 256(r3)
-	write32(0x403c, 0x48000000); // b 0x403c
-	dc_flushrange((void*)0x100,32);
-	dc_flushrange((void*)0x4000,64);
-*/
-	write32(0x4000, 0x7c79faa6); // mfl2cr r3
-	write32(0x4004, 0x3c807fff); // lis r4, 0x7FFF
-	write32(0x4008, 0x6084ffff); // ori r4, r4, 0xFFFF
-	write32(0x400c, 0x7c632038); // and r3, r3, r4
-	write32(0x4010, 0x7c79fba6); // mtl2cr r3
-	write32(0x4014, 0x7c0004ac); // sync
-	write32(0x4018, 0x7c70faa6); // mfdbsr r3
-	write32(0x401c, 0x3c80ffff); // lis r4, 0xFFFF
-	write32(0x4020, 0x60843fff); // ori r4, r4, 0x3FFF
-	write32(0x4024, 0x7c632038); // and r3, r3, r4
-	write32(0x4028, 0x7c70fba6); // mtdbsr r3
-	write32(0x402c, 0x7c0004ac); // sync
-	write32(0x4030, 0x3c600133); // lis r3, 0x0133
-	write32(0x4034, 0x3c800000); // lis r4, 0
-	write32(0x4038, 0x3ca00000); // lis r5, 0
-	write32(0x403c, 0x3cc00000); // lis r6, 0
-
-	write32(0x4040, 0x2c064000); // cmpwi r6, 0x4000
-	write32(0x4044, 0x4080001c); // bge- 0x4060
-	write32(0x4048, 0x80a40000); // lwz r5, 0(r4)
-	write32(0x404c, 0x90a30000); // stw r5, 0(r3)
-	write32(0x4050, 0x38630004); // addi r3, r3, 4
-	write32(0x4054, 0x38840004); // addi r4, r4, 4
-	write32(0x4058, 0x38c60004); // addi r6, r6, 4
-	write32(0x405c, 0x4bffffe4); // b 0x4040
-	write32(0x4060, 0x48000000); // b 0x4060
+	write_stub(dumper_stub_location, dumper_stub, dumper_stub_size);
 
 	dc_flushrange((void*)0x100,32);
 	dc_flushrange((void*)0x4000,128);
@@ -363,7 +349,7 @@ int powerpc_boot_file(const char *path)
 	FIL bootrom;
 	u32 bw;
 
-	if (f_open(&bootrom, "/bootrom.bin", FA_WRITE|FA_CREATE_ALWAYS) == FR_OK)
+	if (f_open(&bootrom, path, FA_WRITE|FA_CREATE_ALWAYS) == FR_OK)
 	{
 		dc_invalidaterange((void*)0x1330000, 0x4000);
 		f_write(&bootrom, (void*)0x1330000, 0x4000, &bw);

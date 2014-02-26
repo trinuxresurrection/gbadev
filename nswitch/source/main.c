@@ -41,8 +41,10 @@ struct armboot_config
 };
 
 bool __debug = false;
-bool __useIOS = true;
 armboot_config *redirectedGecko = (armboot_config*)0x81200000;
+#define MEM_REG_BASE 0xd8b4000
+#define MEM_PROT (MEM_REG_BASE + 0x20a)
+#define AHBPROT_DISABLED (*(vu32*)0xcd800064 == 0xFFFFFFFF)
 
 // Check if string X is in current argument
 #define CHECK_ARG(X) (!strncmp((X), argv[i], sizeof((X))-1))
@@ -108,24 +110,22 @@ void CheckArguments(int argc, char **argv)
 {	int i;
 	char*pathToSet = 0;
 	char*newPath = redirectedGecko->buf;
-	if(argv[0][0] == 's' || argv[0][0] == 'S') // Make sure you're using an SD card
+/*	if(argv[0][0] == 's' || argv[0][0] == 'S') // Make sure you're using an SD card
 	{	pathToSet = strndup(argv[0] + 3, strrchr(argv[0], '/') - argv[0] - 3);
-		snprintf(newPath, sizeof(redirectedGecko->buf), "%s/ppcboot.elf", pathToSet);
+		snprintf(newPath, sizeof(redirectedGecko->buf), "%s/bootrom.elf", pathToSet);
 	}
-	for (i = 1; i < argc; i++)
+*/	for (i = 1; i < argc; i++)
 	{	if (CHECK_ARG("debug="))
 			__debug = atoi(CHECK_ARG_VAL("debug="));
 		else if (CHECK_ARG("path="))
 			pathToSet = strcpy(newPath, CHECK_ARG_VAL("path="));
-		else if (CHECK_ARG("bootmii="))
-			__useIOS = atoi(CHECK_ARG_VAL("bootmii="));
 	}
 	if(pathToSet)
 	{	redirectedGecko->path_magic = 0x016AE570;
 		DCFlushRange(redirectedGecko, 288);
-		DEBUG("Setting ppcboot location to %s.\n", newPath);
+		DEBUG("Will dimp bootROM to %s.\n", newPath);
 		free(pathToSet);
-	}
+	}else printf("Will dump NAND to sd:/bootrom.bin\n");
 }
 
 s32 mountSD()
@@ -351,6 +351,10 @@ int loadBINfromNAND(const char *path, void*destination)
 	return 0;
 }
 
+static void disable_memory_protection() {
+	write32(MEM_PROT, read32(MEM_PROT) & 0x0000FFFF);
+}
+
 static void initialize(GXRModeObj *rmode)
 {
 	static void *xfb = NULL;
@@ -420,37 +424,7 @@ int main(int argc, char **argv) {
 		}
 		CHANGE_COLOR(WHITE); // Restore default
 	}
-	if(__useIOS){
-	
-			/** Boot mini from mem code by giantpune. **/
-	
-		DEBUG("** Running Boot mini from mem code by giantpune. **\n");
-		
-		void *mini = memalign(32, armboot_size);  
-		if(!mini) 
-			  return 0;    
-
-		memcpy(mini, armboot, armboot_size);  
-		DCFlushRange(mini, armboot_size);               
-
-		*(u32*)0xc150f000 = 0x424d454d;  
-		asm volatile("eieio");  
-
-		*(u32*)0xc150f004 = MEM_VIRTUAL_TO_PHYSICAL(mini);  
-		asm volatile("eieio");
-
-		tikview views[4] ATTRIBUTE_ALIGN(32);
-		DEBUG("Shutting down IOS subsystems.\n");
-		__IOS_ShutdownSubsystems();
-		printf("Loading IOS 254.\n");
-		__ES_Init();
-		u32 numviews;
-		ES_GetNumTicketViews(0x00000001000000FEULL, &numviews);
-		ES_GetTicketViews(0x00000001000000FEULL, views, numviews);
-		ES_LaunchTitleBackground(0x00000001000000FEULL, &views[0]);
-
-		free(mini);
-	}else{
+	if(AHBPROT_DISABLED){
 	
 			/** boot mini without BootMii IOS code by Crediar. **/
 	
@@ -461,7 +435,7 @@ int main(int argc, char **argv) {
 			0x68, 0x4B, 0x2B, 0x06, 0xD1, 0x0C, 0x68, 0x8B, 0x2B, 0x00, 0xD1, 0x09, 0x68, 0xC8, 0x68, 0x42
 		};
 		DEBUG("Searching for ES_ImportBoot2.\n");
-		
+		disable_memory_protection();
 		for( i = 0x939F0000; i < 0x939FE000; i+=2 )
 		{	
 			if( memcmp( (void*)(i), ES_ImportBoot2, sizeof(ES_ImportBoot2) ) == 0 )
@@ -495,6 +469,36 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
+	}else{
+	
+			/** Boot mini from mem code by giantpune. **/
+	
+		DEBUG("** Running Boot mini from mem code by giantpune. **\n");
+		
+		void *mini = memalign(32, armboot_size);  
+		if(!mini) 
+			  return 0;    
+
+		memcpy(mini, armboot, armboot_size);  
+		DCFlushRange(mini, armboot_size);               
+
+		*(u32*)0xc150f000 = 0x424d454d;  
+		asm volatile("eieio");  
+
+		*(u32*)0xc150f004 = MEM_VIRTUAL_TO_PHYSICAL(mini);  
+		asm volatile("eieio");
+
+		tikview views[4] ATTRIBUTE_ALIGN(32);
+		DEBUG("Shutting down IOS subsystems.\n");
+		__IOS_ShutdownSubsystems();
+		printf("Loading IOS 254.\n");
+		__ES_Init();
+		u32 numviews;
+		ES_GetNumTicketViews(0x00000001000000FEULL, &numviews);
+		ES_GetTicketViews(0x00000001000000FEULL, views, numviews);
+		ES_LaunchTitleBackground(0x00000001000000FEULL, &views[0]);
+
+		free(mini);
 	}
 	if(__debug) {
 		printf("Waiting for mini gecko output.\n");
