@@ -419,12 +419,7 @@ const u32 stub_1800_1_512_size = sizeof(stub_1800_1_512) / 4;
 const u32 stub_1800_1_512_location = 0x100;
 
 void powerpc_jump_stub(u32 location, u32 entry)
-{
-//	u32 i;
-	//u32 location = 0x01330100;
-//	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
-
-	// lis r3, entry@h
+{	// lis r3, entry@h
 	write32(location + 4 * 0, 0x3c600000 | entry >> 16);
 	// ori r3, r3, entry@l
 	write32(location + 4 * 1, 0x60630000 | (entry & 0xffff));
@@ -605,43 +600,46 @@ int powerpc_load_elf(const char* path)
 	return 0;
 }
 
+#define RACE_LOC	/*0x136f0fc*/ 0x1330100
+#define CACHE_LOC	/*0x136f0e0*/ 0x1330100
+#define WAIT_TIME	9422
+
 
 int powerpc_boot_file(const char *path)
 {
-	int fres=0, i=0;
-	bool todo[3] = {true,true,true};
-	u32 address;
+	int fres = 0; 
 	//FIL fd;
+	//u32 decryptionEndAddress, entry;
 	
-//	gecko_printf("powerpc_load_elf returned %d .\r\n", fres = powerpc_load_elf(path));
-	gecko_printf("0xd8005A0 register value is %08x.\r\n", read32(0xd8005A0));
+	//gecko_printf("powerpc_load_elf returned %d .\n", fres = powerpc_load_elf(path));
+	//fres = powerpc_load_dol("/bootmii/00000003.app", &entry);
+	//decryptionEndAddress = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3; 
+	//gecko_printf("powerpc_load_dol returned %d .\n", fres);
+	if(fres) return fres;
+	// give PPC back it's control of the lights
+	set32(HW_GPIO1OWNER, HW_GPIO1_SENSE); // TO DO : need sensor bar for LOL serial
+	set32(HW_GPIO1OWNER, HW_GPIO1_SLOT);
+	write32(0x2fe0, 0x0);
+	gecko_printf("0xd8005A0 register value is %08x.\n", read32(0xd8005A0));
 	if((read32(0xd8005A0) & 0xFFFF0000) != 0xCAFE0000)
-	{	gecko_printf("This test is meant for a Wii U. Restarting.\r\n");
-		systemReset();
+	{	gecko_printf("Running old Wii code.\n");
 		powerpc_upload_oldstub(elfhdr.e_entry);
 		powerpc_reset();
-		gecko_printf("PPC booted!\r\n");
+		gecko_printf("PPC booted!\n");
 		return 0;
-	}gecko_printf("Running Wii U code.\r\n");
-	fres = powerpc_load_dol("/bootmii/00000003.app", &elfhdr.e_entry);
-	if(fres)
-		gecko_printf("powerpc_load_dol returned %d .\r\nLet's hope it's already/still uncorrupted in RAM.\r\n", fres);
-	address = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3;
-	powerpc_upload_oldstub(0x1800);
-	write_stub(0x1800, (u32*)stubsb1, stubsb1_size/4);
-	powerpc_jump_stub(0x1800+stubsb1_size, elfhdr.e_entry);
-	write32(0x2f00,0x1);
-	write32(0x2f40,0x0);
-	write32(0x2f80,0x0);
+	}gecko_printf("Running Wii U code.\n");
+	powerpc_upload_oldstub(elfhdr.e_entry);
+ 	//write_stub(0x1800, (u32*)stubsb1, stubsb1_size/4);
 	dc_flushall();
-	//this is where the end of our entry point loading stub will be
-	u32 oldValue = read32(0x1330100);
+	//this is where our entry point loading stub will be
+	u32 oldValue = read32(RACE_LOC);
 
-	set32(HW_GPIO1OWNER, HW_GPIO1_SENSE);
-	//set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
-	//set32(HW_AHBPROT, 0xFFFFFFFF);
-	gecko_printf("Resetting PPC. End on-screen debug output.\r\nSee SD log for more details.\r\n");
+	set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
+	set32(HW_AHBPROT, 0xFFFFFFFF);
+	gecko_printf("Resetting PPC. End on-screen debug output. Testing %d us\n\n", WAIT_TIME);
 	gecko_enable(0);
+
+	gecko_printf("Value of last encrypted ancast instruction: %08x\n", oldValue);
 
 	//reboot ppc side
 	clear32(HW_RESETS, 0x30);
@@ -649,56 +647,126 @@ int powerpc_boot_file(const char *path)
 	set32(HW_RESETS, 0x20);
 	udelay(100);
 	set32(HW_RESETS, 0x10);
-	
-	// do race attack here
-	do dc_invalidaterange((void*)0x1330100,32);
-	while(oldValue == read32(0x1330100));
-	oldValue = read32(address);
 
-	write32(0x1330100, 0x7ca000a6); // mfmsr r5
-	write32(0x1330104, 0x38802000); // li r4, 0x2000
-	write32(0x1330108, 0x7c800124); // mtmsr r4
-	write32(0x133010c, 0x48001802); // b 0x1800
-	dc_flushrange((void*)0x1330100,32);
-	
-/*	do dc_invalidaterange((void*)address,32);
-	while(oldValue == read32(address));
-*/	
-	do
-	{	dc_invalidaterange((void*)0x2f00,256);
-		for(i=0; i<3; i++)
-			if(todo[i] && read32(0x2f00+(i*0x40))==i)
-			{	todo[i] = false;
-				gecko_printf("%d", i);
-			}
-	}while(todo[0] || todo[1] || todo[2]);
-	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
-	
-	
-	gecko_printf("\r\n");
-	//dump memory area here
-	for(i=0; i<3; i++)
-	{	address = 0x2f00+(i*0x40);
-		gecko_printf("\r\ncore %d (0x%08x)\r\n", i, address);
-		gecko_printf("-------------------\r\n");
-		gecko_printf("UPIR(1007):0x%08x\r\n", read32(address + 0));
-		gecko_printf("PVR (287) :0x%08x\r\n", read32(address + 4));
-		gecko_printf("HID2(920) :0x%08x\r\n", read32(address + 8));
-		gecko_printf("HID5(944) :0x%08x\r\n", read32(address + 12));
-		gecko_printf("SCR (947) :0x%08x\r\n", read32(address + 16));
-		gecko_printf("CAR (948) :0x%08x\r\n", read32(address + 20));
-		gecko_printf("BCR (949) :0x%08x\r\n", read32(address + 24));
-		gecko_printf("HID0(1008):0x%08x\r\n", read32(address + 28));
-		gecko_printf("HID1(1009):0x%08x\r\n", read32(address + 32));
-		gecko_printf("HID4(1011):0x%08x\r\n", read32(address + 36));
-		gecko_printf("L2CR(1017):0x%08x\r\n", read32(address + 40));
-		gecko_printf(" New MSR : 0x%08x\r\n", read32(address + 44));
-		gecko_printf(" Old MSR : 0x%08x\r\n", read32(address + 48));
-		gecko_printf("Old HID5 : 0x%08x\r\n", read32(address + 52));
+	gecko_printf("Restarted Boot ROM\n");
+
+	// Write code to the reset vector
+	write32(0x100, 0x48003f00);
+
+	// Write code to 0x4000
+	/*write32(0x4000, 0x7c79faa6);
+	write32(0x4004, 0x3c807fff);
+	write32(0x4008, 0x6084ffff);
+	write32(0x400c, 0x7c632038);
+	write32(0x4010, 0x7c79fba6);
+	write32(0x4014, 0x7c0004ac);
+	write32(0x4018, 0x7c70faa6);
+	write32(0x401c, 0x3c80ffff);
+	write32(0x4020, 0x60843fff);
+	write32(0x4024, 0x7c632038);
+	write32(0x4028, 0x7c70fba6);
+	write32(0x402c, 0x7c0004ac);
+	write32(0x4030, 0x3c600133);
+	write32(0x4034, 0x7c93eaa6);
+	write32(0x4038, 0x90830100);
+	write32(0x403c, 0x48000000);
+	dc_flushrange((void*)0x100,32);
+	dc_flushrange((void*)0x4000,32);
+	dc_flushrange((void*)0x4020,32);*/
+	write32(0x4000, 0x7c79faa6);
+	write32(0x4004, 0x3c807fff);
+	write32(0x4008, 0x6084ffff);
+	write32(0x400c, 0x7c632038);
+	write32(0x4010, 0x7c79fba6);
+	write32(0x4014, 0x7c0004ac);
+	write32(0x4018, 0x7c70faa6);
+	write32(0x401c, 0x3c80ffff);
+	write32(0x4020, 0x60843fff);
+	write32(0x4024, 0x7c632038);
+	write32(0x4028, 0x7c70fba6);
+	write32(0x402c, 0x7c0004ac);
+	write32(0x4030, 0x3c600133);
+	write32(0x4034, 0x3c800000);
+	write32(0x4038, 0x3ca00000);
+	write32(0x403c, 0x3cc00000);
+
+	write32(0x4040, 0x2c064000);
+	write32(0x4044, 0x4080001c);
+	write32(0x4048, 0x80a40000);
+	write32(0x404c, 0x90a30000);
+	write32(0x4050, 0x38630004);
+	write32(0x4054, 0x38840004);
+	write32(0x4058, 0x38c60004);
+	write32(0x405c, 0x4bffffe4);
+	write32(0x4060, 0x48000000);
+
+	dc_flushrange((void*)0x100,32);
+	dc_flushrange((void*)0x4000,32);
+	dc_flushrange((void*)0x4020,32);
+	dc_flushrange((void*)0x4040,32);
+	dc_flushrange((void*)0x4060,32);
+
+	gecko_printf("Written code to reset vector\n");
+
+	// do race attack here
+	do dc_invalidaterange((void*)CACHE_LOC,32);
+	while(oldValue == read32(RACE_LOC));
+
+	udelay(WAIT_TIME);
+
+	// SRESET
+	clear32(HW_RESETS, 0x20);
+	udelay(100);
+	set32(HW_RESETS, 0x20);
+	udelay(200);
+
+	gecko_printf("SRESET performed\n");
+
+	/*// rendezvous
+	dc_invalidaterange((void*)0x1330100,32);
+	ahb_flush_from(AHB_1);
+	u32 val1 = read32(0x1330100);
+	u32 val2 = read32(0x1330104);
+
+	gecko_printf("Values: %08x %08x\r\n", val1, val2);*/
+
+	FIL bootrom;
+	u32 bw;
+
+	if (f_open(&bootrom, "/bootrom.bin", FA_WRITE|FA_CREATE_ALWAYS) == FR_OK)
+	{
+		/* Start a loop */
+		u32 i;
+		for (i = 0x1330000; i < 0x1334000; i+=32)
+		{
+			dc_invalidaterange((void*)i,32);
+			f_write(&bootrom, (const void*)i, 32, &bw);
+		}
+
+		f_close(&bootrom);
 	}
 
-	systemReset();
-	return 0;
+	gecko_printf("Boot ROM dumped to file\n");
+
+
+	return -1;
+
+	while(1);
+
+	//write32(0x1330100, 0x38802000); // li r4, 0x2000
+	//write32(0x1330104, 0x7c800124); // mtmsr r4
+	//write32(0x1330108, 0x48001802); // b 0x1800
+	powerpc_jump_stub(0x1330100, elfhdr.e_entry);
+	dc_flushrange((void*)0x1330100,32);
+
+	// To DO : this is temporary to wait until cores 2 and 1 have spun up
+	// needs to be moved to the PPC side in case PPC doesn't want to use them
+	do dc_invalidaterange((void*)0x2fe0,32);
+	while(!read16(0x2fe2));
+	udelay(100);
+	set32(HW_EXICTRL, EXICTRL_ENABLE_EXI);
+
+	return fres;
 }
 
 
