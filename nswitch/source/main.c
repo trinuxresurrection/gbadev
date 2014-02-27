@@ -387,15 +387,7 @@ int main(int argc, char **argv) {
 		printf("Applying patches to IOS with AHBPROT\n");
 		printf("IosPatch_RUNTIME(...) returned %i\n", IosPatch_RUNTIME(true, false, false, true));
 		printf("ISFS_Initialize() returned %d\n", ISFS_Initialize());
-		if((i=mountSD()) || dumpfile(NAND_path, "sd:/bootmii/00000003.app"))
-		{	printf("Dumping of 00000003.app file to SD failed. Attempting to write to memory.\n");
-			printf("loadDOLfromNAND() returned %d .\n", loadDOLfromNAND(NAND_path));
-		}
-		NAND_path = "/title/00000001/00000050/content/0000000d.app";
-		if(!i)
-		{	printf("dumpfile() returned %d for IOS80.\n", dumpfile(NAND_path, "sd:/bootmii/0000000d.app"));
-			__io_wiisd.shutdown();
-		}
+		printf("loadDOLfromNAND() returned %d .\n", loadDOLfromNAND(NAND_path));
 		printf("Setting magic word.\n");
 		redirectedGecko->str[0] = '\0';
 		redirectedGecko->str[1] = '\0';
@@ -404,24 +396,12 @@ int main(int argc, char **argv) {
 	}else{
 		IosPatch_RUNTIME(true, false, false, false);
 		ISFS_Initialize();
-		if((i=mountSD()) || dumpfile(NAND_path, "sd:/bootmii/00000003.app"))
+		if(loadDOLfromNAND(NAND_path))
 		{	CHANGE_COLOR(RED);
-			printf("Dump 1-512 to SD from NAND failed.\n");
-			if(loadDOLfromNAND(NAND_path))
-			{	CHANGE_COLOR(RED);
-				printf("Load 1-512 from NAND failed.\n");
-			} else {
-				CHANGE_COLOR(GREEN);
-				printf("1-512 loaded from NAND.\n");
-			}
+			printf("Load 1-512 from NAND failed.\n");
 		} else {
 			CHANGE_COLOR(GREEN);
-			printf("1-512 dumped to SD from NAND.\n");
-		}
-		NAND_path = "/title/00000001/00000050/content/0000000d.app";
-		if(!i)
-		{	dumpfile(NAND_path, "sd:/bootmii/0000000d.app");
-			__io_wiisd.shutdown();
+			printf("1-512 loaded from NAND.\n");
 		}
 		CHANGE_COLOR(WHITE); // Restore default
 	}
