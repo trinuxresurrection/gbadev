@@ -308,8 +308,6 @@ int powerpc_boot_file(const char *path)
 	gecko_printf("Resetting PPC. End on-screen debug output. Testing %d us\r\n\r\n", WAIT_TIME);
 	gecko_enable(0);
 
-	gecko_printf("Value of last encrypted ancast instruction: %08x\r\n", oldValue);
-
 	//reboot ppc side
 	clear32(HW_RESETS, 0x30);
 	udelay(100);
