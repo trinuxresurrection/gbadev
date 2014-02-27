@@ -339,7 +339,7 @@ int loadBINfromNAND(const char *path, void*destination)
 		ISFS_Close(fd);
 		return ret;
 	}
-	DEBUG("Loading %s file to 0x%08x, size = %uKB ...", path, destination, (status.file_length / 1024)+1);
+	DEBUG("Loading %s file to 0x%08x, size = %uKB ...", path, (u32)destination, (status.file_length / 1024)+1);
 
 	ret = ISFS_Read(fd, destination, status.file_length);
 	if (ret < 0)
