@@ -295,10 +295,7 @@ void write_stub(u32 address, const u32 stub[], u32 size)
 }
 
 int powerpc_boot_file(const char *path)
-{
-	int fres = 0; 
-	write32(0x2fe0, 0x0);
-	gecko_printf("0xd8005A0 register value is %08x.\r\n", read32(0xd8005A0));
+{	gecko_printf("0xd8005A0 register value is %08x.\r\n", read32(0xd8005A0));
 	if((read32(0xd8005A0) & 0xFFFF0000) != 0xCAFE0000)
 	{	gecko_printf("This only works on a Wii U. Exiting.\r\n");
 		return -1;
