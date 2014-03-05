@@ -613,7 +613,7 @@ int powerpc_boot_file(const char *path)
 	gecko_printf("boot_file:0x%08x\r\n", (u32)&powerpc_boot_file);
 	
 	u32 memmirr = read32(HW_MEMMIRR), boot0 = read32(HW_REG_BASE+0x18c), addr = 0xFFF00000, size;
-	write32(HW_REG_BASE+0x18c, boot0|0x1000);
+	write32(HW_REG_BASE+0x18c, boot0&~0x1000);
 	write32(HW_MEMMIRR, memmirr|0x20);
 	for(;addr<0xFFF20000;addr+=4)
 		write32(addr&0x100FFFFF,read32(addr));
