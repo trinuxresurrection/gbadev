@@ -608,10 +608,33 @@ int powerpc_load_elf(const char* path)
 
 int powerpc_boot_file(const char *path)
 {
+	gecko_printf("HW_MEMMIRR:0x%08x\r\n", read32(HW_MEMMIRR));
+	gecko_printf("HW_BOOT0 : 0x%08x\r\n", read32(HW_REG_BASE+0x18c));
+	gecko_printf("boot_file:0x%08x\r\n", (u32)&powerpc_boot_file);
+	
+	u32 memmirr = read32(HW_MEMMIRR), boot0 = read32(HW_REG_BASE+0x18c), addr = 0xFFF00000, size;
+	write32(memmirr|0x20);
+	write32(boot0|0x1000);
+	for(;addr<0xFFF20000;addr+=4)
+		write32(addr&0x100FFFFF,read32(addr));
+	write32(memmirr);
+	write32(boot0);
+	
+	gecko_printf("Copy finished. Dumping...\r\n");
+	
+	FIL fd;
+	f_open(&fd, "\boot0.bin", FA_CREATE_ALWAYS|FA_WRITE);
+	f_write(&fd, (void*)0x10000000, 0x20000, &size);
+	f_close(&fd);
+	
+	gecko_printf("Done. Resetting in 10 seconds.\r\n");
+	udelay(10000000);
+	systemReset();
+	return 0;
+	
 	int fres=0, i=0;
 	bool todo[3] = {true,true,true};
 	u32 address;
-	//FIL fd;
 	
 //	gecko_printf("powerpc_load_elf returned %d .\r\n", fres = powerpc_load_elf(path));
 	gecko_printf("0xd8005A0 register value is %08x.\r\n", read32(0xd8005A0));
