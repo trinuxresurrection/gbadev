@@ -609,7 +609,7 @@ int powerpc_load_elf(const char* path)
 int powerpc_boot_file(const char *path)
 {
 	gecko_printf("HW_MEMMIRR:0x%08x\r\n", read32(HW_MEMMIRR));
-	gecko_printf("HW_BOOT0 : 0x%08x\r\n", read32(HW_REG_BASE+0x18c));
+	gecko_printf("HW_BOOT0 : 0x%08x\r\n", read32(HW_REG_BASE+0x18c)&~0x1000);
 	gecko_printf("boot_file:0x%08x\r\n", (u32)&powerpc_boot_file);
 	
 	u32 memmirr = read32(HW_MEMMIRR), boot0 = read32(HW_REG_BASE+0x18c), addr = 0xFFF00000, size;
