@@ -623,7 +623,7 @@ int powerpc_boot_file(const char *path)
 	gecko_printf("Copy finished. Dumping...\r\n");
 	
 	FIL fd;
-	f_open(&fd, "\boot0.bin", FA_CREATE_ALWAYS|FA_WRITE);
+	f_open(&fd, "/boot0.bin", FA_CREATE_ALWAYS|FA_WRITE);
 	f_write(&fd, (void*)0x10000000, 0x20000, &size);
 	f_close(&fd);
 	
