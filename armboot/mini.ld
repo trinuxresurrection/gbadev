@@ -19,7 +19,7 @@ __irqstack_size = 0x100;
 __excstack_size = 0x100;
 
 MEMORY {
-	sram		: ORIGIN = 0x13ef0000, LENGTH = 64K
+	sram		: ORIGIN = 0xffff0000, LENGTH = 64K
 	sram2		: ORIGIN = 0x13ee0000, LENGTH = 16K
 	pagetable	: ORIGIN = 0x13ee4000, LENGTH = 16K
 	mem2		: ORIGIN = 0x13f00000, LENGTH = 1M
