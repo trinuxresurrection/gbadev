@@ -295,17 +295,38 @@ void write_stub(u32 address, const u32 stub[], u32 size)
 }
 
 int powerpc_boot_file(const char *path)
-{	gecko_printf("0xd8005A0 register value is %08x.\r\n", read32(0xd8005A0));
-	if((read32(0xd8005A0) & 0xFFFF0000) != 0xCAFE0000)
-	{	gecko_printf("This only works on a Wii U. Exiting.\r\n");
+{	FIL fd;
+	u32 boot0 = read32(HW_REG_BASE+0x18c), bw, size;
+	bool isWiiU = ((read32(0xd8005A0) & 0xFFFF0000) == 0xCAFE0000);
+	
+	gecko_printf("0xd8005A0 register value is %08x.\r\n", read32(0xd8005A0));
+	if(isWiiU)
+	{	gecko_printf("It's a WiiU. Will dump 16k bootROM and 16k boot0.\r\n");
+		size = 0x4000;
+	}else
+	{	gecko_printf("It's a Wii. Only dumping 4k boot0.\r\n");
+		size = 0x1000;
+	}
+	
+	// boot0 dump
+	write32(HW_REG_BASE+0x18c, boot0&~0x1000);
+	f_open(&fd, "/boot0.bin", FA_CREATE_ALWAYS|FA_WRITE);
+	f_write(&fd, (void*)0xFFF00000, size, &bw);
+	f_close(&fd);
+	write32(HW_REG_BASE+0x18c, boot0);
+	
+	gecko_printf("Boot0 dump done. ");
+	if(!isWiiU)
+	{	gecko_printf("Exiting.\r\n");
 		return -1;
-	}gecko_printf("Running code (Wii U specific.)\r\n");
+	}gecko_printf("Now for the bootROM.\r\n");
+
 	//this is where the starting point for the decryption will be
 	u32 oldValue = read32(RACE_LOC);
 
 	set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
 	set32(HW_AHBPROT, 0xFFFFFFFF);
-	gecko_printf("Resetting PPC. End on-screen debug output. Testing %d us\r\n\r\n", WAIT_TIME);
+	gecko_printf("Resetting PPC. End on-screen debug output.\r\n\r\n", WAIT_TIME);
 	gecko_enable(0);
 
 	//reboot ppc side
@@ -337,23 +358,20 @@ int powerpc_boot_file(const char *path)
 	clear32(HW_RESETS, 0x20);
 	udelay(100);
 	set32(HW_RESETS, 0x20);
-	udelay(200); // wait for PPC to dump to RAM
+	udelay(200); // give PPC a moment to dump to RAM
 
 	gecko_printf("SRESET performed\r\n");
 
-	FIL bootrom;
-	u32 bw;
-
-	if (f_open(&bootrom, path, FA_WRITE|FA_CREATE_ALWAYS) == FR_OK)
+	if (f_open(&fd, path, FA_WRITE|FA_CREATE_ALWAYS) == FR_OK)
 	{
 		dc_invalidaterange((void*)0x1330000, 0x4000);
-		f_write(&bootrom, (void*)0x1330000, 0x4000, &bw);
-		f_close(&bootrom);
+		f_write(&fd, (void*)0x1330000, 0x4000, &bw);
+		f_close(&fd);
 	}
 
 	gecko_printf("Boot ROM dumped to file.\r\n");
 
-
+	// exiting to system menu
 	return -1;
 }
 

@@ -30,7 +30,7 @@ static u8 gecko_found = 0;
 static u8 gecko_enabled = 2;
 static u8 gecko_console_enabled = 0;
 
-#define LOG_FILE "/trnx-log.txt"
+#define LOG_FILE "/mini-log.txt"
 
 static u32 _gecko_command(u32 command)
 {
