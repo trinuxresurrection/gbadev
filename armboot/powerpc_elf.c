@@ -607,28 +607,13 @@ int powerpc_load_elf(const char* path)
 
 
 int powerpc_boot_file(const char *path)
-{
-	gecko_printf("HW_MEMMIRR:0x%08x\r\n", read32(HW_MEMMIRR));
-	gecko_printf("HW_BOOT0 : 0x%08x\r\n", read32(HW_REG_BASE+0x18c)&~0x1000);
-	gecko_printf("boot_file:0x%08x\r\n", (u32)&powerpc_boot_file);
-	
-	u32 memmirr = read32(HW_MEMMIRR), boot0 = read32(HW_REG_BASE+0x18c), addr = 0xFFF00000, size;
+{	FIL fd;
+	u32 boot0 = read32(HW_REG_BASE+0x18c), size;
 	write32(HW_REG_BASE+0x18c, boot0&~0x1000);
-	write32(HW_MEMMIRR, memmirr|0x20);
-	for(;addr<0xFFF20000;addr+=4)
-		write32(addr&0x100FFFFF,read32(addr));
-	write32(HW_MEMMIRR, memmirr);
-	write32(HW_REG_BASE+0x18c, boot0);
-	
-	gecko_printf("Copy finished. Dumping...\r\n");
-	
-	FIL fd;
 	f_open(&fd, "/boot0.bin", FA_CREATE_ALWAYS|FA_WRITE);
-	f_write(&fd, (void*)0x10000000, 0x20000, &size);
+	f_write(&fd, (void*)0xFFF00000, 0x20000, &size);
 	f_close(&fd);
-	
-	gecko_printf("Done. Resetting in 10 seconds.\r\n");
-	udelay(10000000);
+	write32(HW_REG_BASE+0x18c, boot0);
 	systemReset();
 	return 0;
 	
