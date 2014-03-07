@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<app version="1.0">
+	<name>Dump Mii ROM</name>
+	<coder>MarioNumber1/Maxternal</coder>
+	<version>r1</version>
+	<release_date>20131212182922</release_date>
+	<short_description>Dumps bootROM and boot0</short_description>
+	<long_description>The PowerPC bootROM will end up in SD:/bootrom.bin (Wii U only) and boot0 will end up in SD:/boot0.bin</long_description>
+    <arguments>
+        <arg>debug=0</arg>
+    </arguments>
+    <ahb_access/>
+    <no_ios_reload/>
+</app>

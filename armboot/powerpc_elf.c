@@ -326,7 +326,7 @@ int powerpc_boot_file(const char *path)
 
 	set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
 	set32(HW_AHBPROT, 0xFFFFFFFF);
-	gecko_printf("Resetting PPC. End on-screen debug output.\r\n\r\n", WAIT_TIME);
+	gecko_printf("Resetting PPC. End on-screen debug output.\r\n\r\n");
 	gecko_enable(0);
 
 	//reboot ppc side
