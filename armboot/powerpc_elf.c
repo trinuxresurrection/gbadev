@@ -607,16 +607,7 @@ int powerpc_load_elf(const char* path)
 
 
 int powerpc_boot_file(const char *path)
-{	FIL fd;
-	u32 boot0 = read32(HW_REG_BASE+0x18c), size;
-	write32(HW_REG_BASE+0x18c, boot0&~0x1000);
-	f_open(&fd, "/boot0.bin", FA_CREATE_ALWAYS|FA_WRITE);
-	f_write(&fd, (void*)0xFFF00000, 0x20000, &size);
-	f_close(&fd);
-	write32(HW_REG_BASE+0x18c, boot0);
-	systemReset();
-	return 0;
-	
+{	
 	int fres=0, i=0;
 	bool todo[3] = {true,true,true};
 	u32 address;
@@ -631,7 +622,7 @@ int powerpc_boot_file(const char *path)
 		gecko_printf("PPC booted!\r\n");
 		return 0;
 	}gecko_printf("Running Wii U code.\r\n");
-	fres = powerpc_load_dol("/bootmii/00000003.app", &elfhdr.e_entry);
+/*	fres = powerpc_load_dol("/bootmii/00000003.app", &elfhdr.e_entry);
 	if(fres)
 		gecko_printf("powerpc_load_dol returned %d .\r\nLet's hope it's already/still uncorrupted in RAM.\r\n", fres);
 	address = ( 0x1330100 + read32(0x133008c + read32(0x1330008)) -1 ) & ~3;
@@ -641,27 +632,33 @@ int powerpc_boot_file(const char *path)
 	write32(0x2f00,0x1);
 	write32(0x2f40,0x0);
 	write32(0x2f80,0x0);
-	dc_flushall();
+*/	dc_flushall();
 	//this is where the end of our entry point loading stub will be
-	u32 oldValue = read32(0x1330100);
+/*	u32 oldValue = read32(0x1330100);
 
 	set32(HW_GPIO1OWNER, HW_GPIO1_SENSE);
 	//set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
 	//set32(HW_AHBPROT, 0xFFFFFFFF);
-	gecko_printf("Resetting PPC. End on-screen debug output.\r\nSee SD log for more details.\r\n");
+*/	gecko_printf("Resetting PPC. End on-screen debug output.\r\nSee SD log for more details.\r\n");
 	gecko_enable(0);
 
-	//reboot ppc side
-	clear32(HW_RESETS, 0x30);
-	udelay(100);
-	set32(HW_RESETS, 0x20);
-	udelay(100);
-	set32(HW_RESETS, 0x10);
-	
-	// do race attack here
-	do dc_invalidaterange((void*)0x1330100,32);
-	while(oldValue == read32(0x1330100));
-	oldValue = read32(address);
+	u32 start, end, i;
+	for(i=0;i<100;i++)
+	{	//reboot ppc side
+		clear32(HW_RESETS, 0x30);
+		udelay(100);
+		set32(HW_RESETS, 0x20);
+		udelay(100);
+		set32(HW_RESETS, 0x10);
+		start = read32(HW_TIMER);
+		// do "race attack" here
+		do dc_invalidaterange((void*)0x100,32);
+		while(read32(0x100));
+		end = read32(HW_TIMER);
+		gecko_printf("%d ", end-start);
+	}
+	systemReset();
+	return 0;
 
 	write32(0x1330100, 0x7ca000a6); // mfmsr r5
 	write32(0x1330104, 0x38802000); // li r4, 0x2000
