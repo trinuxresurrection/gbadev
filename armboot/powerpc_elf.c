@@ -645,16 +645,21 @@ int powerpc_boot_file(const char *path)
 	u32 start, end;
 	for(;i<100;i++)
 	{	//reboot ppc side
+		write32(0x100,0);
+		dc_flushrange(0x100,32);
+		
 		clear32(HW_RESETS, 0x30);
 		udelay(100);
 		set32(HW_RESETS, 0x20);
 		udelay(100);
 		set32(HW_RESETS, 0x10);
+		
 		start = read32(HW_TIMER);
 		// do "race attack" here
 		do dc_invalidaterange((void*)0x100,32);
-		while(read32(0x100));
+		while(!read32(0x100));
 		end = read32(HW_TIMER);
+		
 		gecko_printf("%d ", end-start);
 	}
 	systemReset();
