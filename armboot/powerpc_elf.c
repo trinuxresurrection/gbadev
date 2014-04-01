@@ -642,8 +642,8 @@ int powerpc_boot_file(const char *path)
 */	gecko_printf("Resetting PPC. End on-screen debug output.\r\nSee SD log for more details.\r\n");
 	gecko_enable(0);
 
-	u32 start, end, i;
-	for(i=0;i<100;i++)
+	u32 start, end;
+	for(;i<100;i++)
 	{	//reboot ppc side
 		clear32(HW_RESETS, 0x30);
 		udelay(100);
