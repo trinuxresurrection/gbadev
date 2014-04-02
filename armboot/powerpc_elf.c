@@ -646,6 +646,9 @@ int powerpc_boot_file(const char *path)
 	// make ANY assumptions about the state of a drunk CPU
 	// and this state may or may not depend on the state
 	// of the processor beforehand and vary between consoles
+	//
+	// and I also finally went back to the f0f presentation
+	// and there's several important points I missed ... oh well
 	for(;i<0x01800000;i+=4) // mem1
 		write32(i,0x48004006);
 	for(i=0x10000000;i<0x14000000;i+=4) // mem2
@@ -657,11 +660,11 @@ int powerpc_boot_file(const char *path)
 	gecko_printf("Resetting PPC. End on-screen debug output.\r\nSee SD log for more details.\r\n");
 	gecko_enable(0);
 
-	u32 top=, bottom=0, middle, end;
+	u32 top=255, bottom=0, middle, end;
 	while(top>=bottom)
 	{	middle = (top-bottom)/2 + bottom;
 		write32(0x100,0x48004006);	// replace with jump to drunk code
-		dc_flushrange(0x100,32);
+		dc_flushrange((void*)0x100,32);
 		
 		//reboot ppc side
 		clear32(HW_RESETS, 0x10);
