@@ -632,36 +632,64 @@ int powerpc_boot_file(const char *path)
 	write32(0x2f00,0x1);
 	write32(0x2f40,0x0);
 	write32(0x2f80,0x0);
-*/	dc_flushall();
+	dc_flushall();
 	//this is where the end of our entry point loading stub will be
-/*	u32 oldValue = read32(0x1330100);
+	u32 oldValue = read32(0x1330100);
 
 	set32(HW_GPIO1OWNER, HW_GPIO1_SENSE);
 	//set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
 	//set32(HW_AHBPROT, 0xFFFFFFFF);
-*/	gecko_printf("Resetting PPC. End on-screen debug output.\r\nSee SD log for more details.\r\n");
+*/	gecko_printf("Filling memory with jumps to code to be run by drunk processor.\r\n");
+	// unfortunately, this code does make some assumptions
+	// about memory mappings and other parts of the state
+	// of the CPU and, really, we shouldn't be able to
+	// make ANY assumptions about the state of a drunk CPU
+	// and this state may or may not depend on the state
+	// of the processor beforehand and vary between consoles
+	for(;i<0x01800000;i+=4) // mem1
+		write32(i,0x48004006);
+	for(i=0x10000000;i<0x14000000;i+=4) // mem2
+		write32(i,0x48004006);
+	write32(0x4004,0x38604000); // li r3, 0x4000
+	write32(0x4008,0x90630000); // stw r3, 0(r3)
+	// add code here to dump keys to RAM
+	dc_flushall();
+	gecko_printf("Resetting PPC. End on-screen debug output.\r\nSee SD log for more details.\r\n");
 	gecko_enable(0);
 
-	u32 start, end;
-	for(;i<100;i++)
-	{	//reboot ppc side
-		write32(0x100,0);
+	u32 top=, bottom=0, middle, end;
+	while(top>=bottom)
+	{	middle = (top-bottom)/2 + bottom;
+		write32(0x100,0x48004006);	// replace with jump to drunk code
 		dc_flushrange(0x100,32);
 		
-		clear32(HW_RESETS, 0x30);
-		udelay(100);
-		set32(HW_RESETS, 0x20);
-		udelay(100);
+		//reboot ppc side
+		clear32(HW_RESETS, 0x10);
+		end = read32(HW_TIMER)+middle;
+//		udelay(100);
+//		set32(HW_RESETS, 0x20);
+//		udelay(100);
+		while(read32(HW_TIMER)<end);
 		set32(HW_RESETS, 0x10);
-		
-		start = read32(HW_TIMER);
-		// do "race attack" here
-		do dc_invalidaterange((void*)0x100,32);
-		while(!read32(0x100));
-		end = read32(HW_TIMER);
-		
-		gecko_printf("%d ", end-start);
+		end+=5000;
+		while(read32(HW_TIMER)<end);
+		dc_invalidaterange((void*)0x100,32);
+		dc_invalidaterange((void*)0x4000,32);
+		if(read32(0x100) == 0x48000000) // bootROM started. Too long.
+		{	top = middle-1;
+			gecko_printf("%d is too long\r\n", middle);
+		}else if(!read32(0x4000)) // success, running drunken code
+		{	gecko_printf("%d worked for you. Congradulations, your processor is now drunk.", middle);
+			// dump keys here.
+			systemReset();
+			return 0;
+		}else // nothing happened too short
+		{	bottom = middle+1;
+			gecko_printf("%d is too short\r\n", middle);
+		}
 	}
+	
+	gecko_printf("No working delay found?");
 	systemReset();
 	return 0;
 
