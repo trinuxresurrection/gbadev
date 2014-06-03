@@ -53,7 +53,7 @@ void powerpc_upload_oldstub(u32 entry)
 
 void powerpc_hang(void)
 {
-	gecko_printf("Hanging PPC. End debug output.\n\n");
+	gecko_printf("Hanging PPC. End on-screen debug output.\r\nSee SD log for more details.\r\n");
 	gecko_enable(0);
 	clear32(HW_RESETS, 0x30);
 	udelay(100);
