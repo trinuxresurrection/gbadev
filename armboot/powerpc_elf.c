@@ -658,9 +658,9 @@ int powerpc_boot_file(const char *path)
 
 	gecko_printf("Filling memory with jumps to code to be run by drunk processor.\r\n");
 	fillMem(0, 0x01800000); // mem1
-	gecko_printf("mem1 done, starting mem2");
-	fillMem(0x10000000, 0x14000000); // mem2
-	gecko_printf("mem2 done");
+	//gecko_printf("mem1 done, starting mem2");
+	//fillMem(0x10000000, 0x14000000); // mem2
+	gecko_printf("mem1 done");
 	write32(0x4004,0x38604000); // li r3, 0x4000
 	write32(0x4008,0x90630000); // stw r3, 0(r3)
 	// add code here to dump keys to RAM
