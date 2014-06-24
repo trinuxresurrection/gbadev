@@ -655,7 +655,27 @@ int powerpc_boot_file(const char *path)
 	//set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
 	//set32(HW_AHBPROT, 0xFFFFFFFF);
 */	powerpc_hang();
-
+	
+	u32 t1=0, t2=0, t3=0, t4=0, t5=0, t6=0, t7=0, t8=0, start;
+	start = read32(HW_TIMER);
+	while(start==read32(HW_TIMER))t1++;
+	start++;
+	while(start==read32(HW_TIMER))t2++;
+	start++;
+	while(start==read32(HW_TIMER))t3++;
+	start++;
+	while(start==read32(HW_TIMER))t4++;
+	start++;
+	while(start==read32(HW_TIMER))t5++;
+	start++;
+	while(start==read32(HW_TIMER))t6++;
+	start++;
+	while(start==read32(HW_TIMER))t7++;
+	start++;
+	while(start==read32(HW_TIMER))t8++;
+	gecko_printf("%d %d %d %d %d %d %d %d\r\n",t1,t2,t3,t4,t5,t6,t7,t8);
+	systemReset();
+	
 	gecko_printf("Filling memory with jumps to code to be run by drunk processor.\r\n");
 	fillMem(0, 0x01800000); // mem1
 	//gecko_printf("mem1 done, starting mem2");
@@ -666,7 +686,7 @@ int powerpc_boot_file(const char *path)
 	// add code here to dump keys to RAM
 	dc_flushall();
 
-	u32 delay, start, end;
+	u32 delay, start2, end;
 	for(delay = 0; delay<255; delay++)
 	{	//reboot ppc side normally
 		clear32(HW_RESETS, 0x10);
