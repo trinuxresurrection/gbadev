@@ -252,9 +252,7 @@ int powerpc_load_elf(const char* path)
 	return 0;
 }
 
-#define RACE_LOC	/*0x136f0fc*/ 0x1330100
-#define CACHE_LOC	/*0x136f0e0*/ 0x1330100
-#define WAIT_TIME	9422
+#define WAIT_TIME	2380
 
 const u32 dumper_stub[] =
 {
@@ -270,12 +268,12 @@ const u32 dumper_stub[] =
 /*0x4024*/ 0x7c632038, // and r3, r3, r4
 /*0x4028*/ 0x7c70fba6, // mtdbsr r3
 /*0x402c*/ 0x7c0004ac, // sync
-/*0x4030*/ 0x3c600133, // lis r3, 0x0133
-/*0x4034*/ 0x3c800000, // lis r4, 0
+/*0x4030*/ 0x3c600133, // lis r3, 0x0132
+/*0x4034*/ 0x3c800000, // lis r4, 0x0c32
 /*0x4038*/ 0x3ca00000, // lis r5, 0
 /*0x403c*/ 0x3cc00000, // lis r6, 0
 
-/*0x4040*/ 0x2c064000, // cmpwi r6, 0x4000
+/*0x4040*/ 0x2c064000, // cmpwi r6, 0x40
 /*0x4044*/ 0x4080001c, // bge- 0x4060
 /*0x4048*/ 0x80a40000, // lwz r5, 0(r4)
 /*0x404c*/ 0x90a30000, // stw r5, 0(r3)
@@ -283,7 +281,21 @@ const u32 dumper_stub[] =
 /*0x4054*/ 0x38840004, // addi r4, r4, 4
 /*0x4058*/ 0x38c60004, // addi r6, r6, 4
 /*0x405c*/ 0x4bffffe4, // b 0x4040
-/*0x4060*/ 0x48000000  // b 0x4060
+
+/*0x4060*/ 0x3c600133, // lis r3, 0x0133
+/*0x4064*/ 0x3c800000, // lis r4, 0
+/*0x4068*/ 0x3ca00000, // lis r5, 0
+/*0x406c*/ 0x3cc00000, // lis r6, 0
+
+/*0x4070*/ 0x2c064000, // cmpwi r6, 0x4000
+/*0x4074*/ 0x4080001c, // bge- 0x4060
+/*0x4075*/ 0x80a40000, // lwz r5, 0(r4)
+/*0x407c*/ 0x90a30000, // stw r5, 0(r3)
+/*0x4080*/ 0x38630004, // addi r3, r3, 4
+/*0x4084*/ 0x38840004, // addi r4, r4, 4
+/*0x4088*/ 0x38c60004, // addi r6, r6, 4
+/*0x408c*/ 0x4bffffe4, // b 0x4070
+/*0x4090*/ 0x48000000  // b 0x4090
 };
 const u32 dumper_stub_size = sizeof(dumper_stub) / 4;
 const u32 dumper_stub_location = 0x4000;
@@ -321,22 +333,12 @@ int powerpc_boot_file(const char *path)
 		return -1;
 	}gecko_printf("Now for the bootROM.\r\n");
 
-	//this is where the starting point for the decryption will be
-	u32 oldValue = read32(RACE_LOC);
-
 	set32(HW_DIFLAGS,DIFLAGS_BOOT_CODE);
 	set32(HW_AHBPROT, 0xFFFFFFFF);
 	gecko_printf("Resetting PPC. End on-screen debug output.\r\n\r\n");
 	gecko_enable(0);
 
-	//reboot ppc side
 	clear32(HW_RESETS, 0x30);
-	udelay(100);
-	set32(HW_RESETS, 0x20);
-	udelay(100);
-	set32(HW_RESETS, 0x10);
-
-	gecko_printf("Restarted Boot ROM\r\n");
 
 	// Write code to the reset vector
 	write32(0x100, 0x48003f00); // b 0x4000
@@ -346,11 +348,13 @@ int powerpc_boot_file(const char *path)
 	dc_flushrange((void*)0x100,32);
 	dc_flushrange((void*)0x4000,128);
 
-	gecko_printf("Written code to reset vector\r\n");
-
-	// do race attack here
-	do dc_invalidaterange((void*)CACHE_LOC,32);
-	while(oldValue == read32(RACE_LOC));
+	gecko_printf("Doing HRESET\r\n");
+	//reboot ppc side
+	clear32(HW_RESETS, 0x30); // HRST+SRST
+	udelay(100);
+	set32(HW_RESETS, 0x20); // remove SRST
+	udelay(100);
+	set32(HW_RESETS, 0x10); // remove HRST
 
 	udelay(WAIT_TIME);
 
@@ -358,11 +362,19 @@ int powerpc_boot_file(const char *path)
 	clear32(HW_RESETS, 0x20);
 	udelay(100);
 	set32(HW_RESETS, 0x20);
-	udelay(200); // give PPC a moment to dump to RAM
+	udelay(2000); // give PPC a moment to dump to RAM
 
 	gecko_printf("SRESET performed\r\n");
 
-	if (f_open(&fd, path, FA_WRITE|FA_CREATE_ALWAYS) == FR_OK)
+	if (f_open(&fd, "/otp_ppc.bin", FA_WRITE|FA_CREATE_ALWAYS) == FR_OK)
+	{
+		dc_invalidaterange((void*)0x1320000, 0x40);
+		f_write(&fd, (void*)0x1320000, 0x40, &bw);
+		f_close(&fd);
+	}
+	gecko_printf("Espresso OTP dumped to file.\r\n");
+
+	if (f_open(&fd, "/bootrom.bin", FA_WRITE|FA_CREATE_ALWAYS) == FR_OK)
 	{
 		dc_invalidaterange((void*)0x1330000, 0x4000);
 		f_write(&fd, (void*)0x1330000, 0x4000, &bw);
